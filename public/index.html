@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한국사 퀴즈</title>
+<link rel="stylesheet" href="/shared/fonts.css">
+<link rel="stylesheet" href="/shared/theme.css">
+<style>
+  .pick{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:var(--s4)}
+  .pick a{display:flex; flex-direction:column; gap:var(--s2); padding:var(--s6); border-radius:var(--r-md); border:2px solid var(--hairline); background:var(--hanji); color:var(--meok); text-decoration:none; min-height:150px}
+  .pick a:hover{border-color:var(--cheong)}
+  .pick b{font-family:var(--serif); font-size:24px}
+  .pick span{color:var(--meok-muted); font-size:16px}
+  .pick em{margin-top:auto; font-style:normal; font-size:15px; color:var(--meok-muted)}
+</style>
+<div class="band" aria-hidden="true"></div>
+<div class="wrap">
+  <div class="top"><span class="logo">한국<span>사</span> 퀴즈</span><span class="chip">한옥 마당 멀티플레이</span></div>
+  <section class="board">
+    <h1 class="display">어느 화면을 열까요?</h1>
+    <div class="pick">
+      <a href="/host"><b>진행자 화면</b><span>부스의 큰 모니터·노트북에서 여세요. 방을 만들고 문제를 넘깁니다.</span><em>/host</em></a>
+      <a href="/play"><b>학생 화면</b><span>학생들의 폰·태블릿에서 여세요. 입장 코드를 넣고 들어옵니다.</span><em>/play</em></a>
+      <a href="/solo"><b>혼자 하기</b><span>네트워크가 안 될 때 쓰는 비상용 1인 버전이에요.</span><em>/solo</em></a>
+    </div>
+  </section>
+</div>
+</html>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>한국사 퀴즈 · 학생</title>
+<meta name="theme-color" content="#f6efe1">
+<link rel="stylesheet" href="/shared/fonts.css">
+<link rel="stylesheet" href="/shared/theme.css">
+<link rel="stylesheet" href="/play/play.css">
+
+<div class="band" aria-hidden="true"></div>
+<div class="wrap">
+  <div class="top">
+    <span class="logo">한국<span>사</span> 퀴즈</span>
+    <span class="chip" id="chip">입장하기</span>
+  </div>
+
+  <main id="app" aria-live="polite">
+
+    <!-- ① 입장 -->
+    <section class="board" id="s-join">
+      <h1 class="display">한옥 마당에서<br><span class="hl">정답 자리</span>로 달려가요!</h1>
+      <p>훈장님이 문제를 내면, 내 캐릭터를 움직여 정답이라고 생각하는 자리에 서세요.</p>
+      <canvas class="preview" id="pv" width="440" height="440" aria-label="내 캐릭터 미리보기"></canvas>
+
+      <div class="field">
+        <label for="code">입장 코드 (숫자 4자리)</label>
+        <input type="text" id="code" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="0000">
+      </div>
+      <div class="field">
+        <label for="pname">내 이름</label>
+        <input type="text" id="pname" maxlength="8" autocomplete="off" placeholder="이름을 써 주세요">
+        <p class="cap muted">별명을 써도 괜찮아요. 전화번호나 학교 이름처럼 나를 알 수 있는 정보는 쓰지 말아 주세요.</p>
+      </div>
+      <div class="field">
+        <span class="lbl" id="clbl">저고리 색</span>
+        <div class="row" role="group" aria-labelledby="clbl" id="colors"></div>
+      </div>
+
+      <p class="err" id="joinErr" role="alert" hidden></p>
+      <div class="actions">
+        <button class="btn btn-primary wide" type="button" id="joinBtn">마당에 들어가기</button>
+      </div>
+    </section>
+
+    <!-- ② 대기 -->
+    <section class="board mid" id="s-wait" hidden>
+      <h1>마당에 들어왔어요!</h1>
+      <p class="big" id="waitWho"></p>
+      <p class="muted">훈장님이 문제를 낼 때까지 조금만 기다려 주세요. 그동안 마당을 걸어 다녀도 돼요.</p>
+      <p class="pill" id="waitCount"></p>
+    </section>
+
+    <!-- ③ 문제 -->
+    <section id="s-quiz" hidden>
+      <div class="qcard">
+        <div class="progress" id="dots" aria-hidden="true"></div>
+        <div class="qhead">
+          <span class="qnum" id="qnum">1 / 10</span>
+          <span class="badge" id="qkind">O/X</span>
+        </div>
+        <h2 class="question" id="qtext"></h2>
+        <div class="timer"><div class="bar"><div class="fill" id="tfill"></div></div><span class="sec" id="tsec">0초</span></div>
+      </div>
+      <div class="stage" id="stage" tabindex="0" aria-label="한옥 마당. 방향키로 캐릭터를 움직여 정답 자리에 서세요.">
+        <canvas id="yard" width="1920" height="1200"></canvas>
+      </div>
+      <div class="controls">
+        <div class="status">
+          <p class="where" id="where">아직 자리를 고르지 않았어요.</p>
+          <p class="hint" id="hintbox" hidden><b>힌트</b> · <span id="hinttext"></span></p>
+          <div class="actions">
+            <button class="btn btn-primary" type="button" id="decide" disabled>여기로 결정!</button>
+            <button class="btn btn-secondary" type="button" id="hintBtn">힌트 보기</button>
+          </div>
+        </div>
+        <div class="pad" id="pad" aria-label="이동 버튼">
+          <button class="up" type="button" data-dir="up" aria-label="위로">▲</button>
+          <button class="left" type="button" data-dir="left" aria-label="왼쪽으로">◀</button>
+          <button class="down" type="button" data-dir="down" aria-label="아래로">▼</button>
+          <button class="right" type="button" data-dir="right" aria-label="오른쪽으로">▶</button>
+        </div>
+      </div>
+      <div class="feedback" id="fb" hidden>
+        <div class="verdict" id="verdict">
+          <span class="sym" id="vsym" aria-hidden="true">○</span>
+          <div>
+            <h2 id="vtitle">정답이에요!</h2>
+            <p class="muted" id="vsub" hidden></p>
+          </div>
+        </div>
+        <p class="explain" id="explain"></p>
+        <p class="pill" id="myscore"></p>
+        <p class="cap muted">훈장님이 다음 문제를 내 줄 거예요.</p>
+      </div>
+    </section>
+
+    <!-- ④ 최종 결과 -->
+    <section class="board result" id="s-final" hidden>
+      <p class="muted" id="finalWho"></p>
+      <div class="score" id="finalScore">0<small> / 10</small></div>
+      <div class="rank"><p class="muted">오늘의 칭호</p><div class="title" id="finalTitle">평민</div><p id="finalSay"></p></div>
+      <div class="ladder" id="ladder" aria-label="칭호 단계"></div>
+      <p class="pill" id="finalPlace"></p>
+      <p class="cap muted">함께해 줘서 고마워요! 다음 사람에게 기기를 전해 주세요.</p>
+      <div class="actions"><button class="btn btn-secondary" type="button" id="againBtn">다른 방에 들어가기</button></div>
+    </section>
+
+    <!-- 안내 -->
+    <section class="board mid" id="s-msg" hidden>
+      <h1 id="msgTitle">앗!</h1>
+      <p class="big" id="msgBody"></p>
+      <div class="actions"><button class="btn btn-primary" type="button" id="msgBtn">처음으로</button></div>
+    </section>
+
+  </main>
+  <footer class="cap muted" id="foot">방향키·WASD로 걷기 · 마당을 눌러도 그쪽으로 걸어가요</footer>
+</div>
+
+<script src="/vendor/socket.io.min.js"></script>
+<script type="module" src="/play/play.js"></script>
+</html>

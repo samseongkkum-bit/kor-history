@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한국사 퀴즈 · 진행자</title>
+<link rel="stylesheet" href="/shared/fonts.css">
+<link rel="stylesheet" href="/shared/theme.css">
+<link rel="stylesheet" href="/host/host.css">
+
+<div class="band" aria-hidden="true"></div>
+<div class="hwrap">
+  <header class="htop">
+    <span class="logo">한국<span>사</span> 퀴즈 <em>진행자 화면</em></span>
+    <div class="htop-right">
+      <span class="chip" id="phase">방을 만들어 주세요</span>
+      <span class="chip" id="today">오늘 참여 인원 합계 0명</span>
+    </div>
+  </header>
+
+  <!-- ① 방 만들기 -->
+  <section class="board start" id="s-start">
+    <h1 class="display">한옥 마당에 <span class="hl">학생들을 불러요</span></h1>
+    <p class="muted">방을 만들면 4자리 입장 코드와 QR 코드가 나와요. 학생들은 자기 기기로 그 코드를 찍고 들어옵니다.</p>
+    <div class="actions"><button class="btn btn-primary big" type="button" id="createBtn">방 만들기</button></div>
+    <p class="cap muted" id="startNote"></p>
+  </section>
+
+  <!-- ② 진행 -->
+  <div class="grid" id="s-game" hidden>
+
+    <!-- 왼쪽: 마당 -->
+    <div class="col-main">
+      <div class="qcard" id="qcard" hidden>
+        <div class="qhead">
+          <span class="qnum" id="qnum">1 / 10</span>
+          <span class="badge" id="qkind">O/X</span>
+        </div>
+        <h2 class="question big-q" id="qtext"></h2>
+        <div class="timer"><div class="bar"><div class="fill" id="tfill"></div></div><span class="sec" id="tsec">0초</span></div>
+      </div>
+
+      <div class="revealcard" id="revealcard" hidden>
+        <div class="row" style="gap:var(--s4); align-items:center">
+          <span class="rsym" id="rsym">○</span>
+          <div>
+            <p class="cap muted">정답</p>
+            <h2 class="big-q" id="ranswer"></h2>
+          </div>
+        </div>
+        <p class="explain" id="rexplain"></p>
+      </div>
+
+      <div class="stage"><canvas id="yard" width="1920" height="1200"></canvas></div>
+      <p class="zones cap muted" id="zoneline"></p>
+    </div>
+
+    <!-- 오른쪽: 조작판 -->
+    <aside class="col-side">
+      <div class="card codecard">
+        <p class="cap muted">입장 코드</p>
+        <div class="code" id="code">0000</div>
+        <div class="qr" id="qr"></div>
+        <p class="cap muted" id="joinurl"></p>
+      </div>
+
+      <div class="card">
+        <p class="cap muted">단계</p>
+        <div class="levels" id="levels"></div>
+      </div>
+
+      <div class="card">
+        <div class="actions">
+          <button class="btn btn-primary" type="button" id="startBtn">게임 시작</button>
+          <button class="btn btn-primary" type="button" id="nextBtn" hidden>다음 문제</button>
+          <button class="btn btn-secondary" type="button" id="endBtn">강제 종료</button>
+        </div>
+      </div>
+
+      <div class="card" id="boardcard" hidden>
+        <p class="cap muted">지금 순위 (상위 5명)</p>
+        <ol class="board-list" id="top5"></ol>
+      </div>
+
+      <div class="card">
+        <p class="cap muted"><span id="plabel">들어온 학생</span> <b id="pcount">0</b>명 <span class="muted" id="pmax"></span></p>
+        <ul class="players" id="players"></ul>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ③ 최종 결과 -->
+  <section class="board result" id="s-final" hidden>
+    <p class="cap muted" id="finalHead"></p>
+    <h1 class="display">최종 순위</h1>
+    <ol class="board-list final-list" id="finalList"></ol>
+    <div class="actions">
+      <button class="btn btn-primary" type="button" id="againBtn">새 문제로 한 판 더</button>
+      <button class="btn btn-secondary" type="button" id="lobbyBtn">대기실로</button>
+    </div>
+  </section>
+
+  <section class="board start" id="s-msg" hidden>
+    <h1 id="msgTitle"></h1>
+    <p id="msgBody"></p>
+    <div class="actions"><button class="btn btn-primary" type="button" onclick="location.href='/host'">처음으로</button></div>
+  </section>
+</div>
+
+<script src="/vendor/socket.io.min.js"></script>
+<script type="module" src="/host/host.js"></script>
+</html>

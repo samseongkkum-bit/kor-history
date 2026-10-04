@@ -172,6 +172,7 @@ export class Room {
       choices: q.t === "mc" ? q.c : null,
       zones: zonesFor(q),
       startAt: this.startAt, endAt: this.endAt,
+      now: Date.now(),                 // 클라이언트가 자기 시계와의 차이를 보정하는 데 쓴다
       seconds: TIME[q.t]
     };
   }

@@ -24,11 +24,13 @@ const io = new Server(http, { pingTimeout: 20000, pingInterval: 8000 });
 const rooms = new Rooms(io);
 
 /* ---------------- 화면 ---------------- */
-app.use(express.static(join(root, "public"), { extensions: ["html"] }));
-app.get("/host", (_req, res) => res.sendFile(join(root, "public", "host", "index.html")));
-app.get("/play", (_req, res) => res.sendFile(join(root, "public", "play", "index.html")));
-app.get("/solo", (_req, res) => res.sendFile(join(root, "public", "solo", "index.html")));
+// /host, /play, /solo 를 먼저 잡아 준다(끝에 / 를 붙이는 자동 이동이 끼어들지 않게).
+const page = name => (_req, res) => res.sendFile(join(root, "public", name, "index.html"));
+app.get("/host", page("host"));
+app.get("/play", page("play"));
+app.get("/solo", page("solo"));
 app.get("/data/questions.json", (_req, res) => res.sendFile(join(root, "data", "questions.json")));
+app.use(express.static(join(root, "public"), { extensions: ["html"], redirect: false }));
 
 /* ---------------- 거드는 주소들 ---------------- */
 // 학생이 들어올 주소. 인터넷에 올렸으면 그 주소, 부스에서는 노트북의 내부 IP.
@@ -65,6 +67,9 @@ app.get("/api/qr", async (req, res) => {
 });
 
 /* ---------------- 소켓 ---------------- */
+// 클라이언트가 `emit("play:lock", cb)` 처럼 페이로드를 생략해도 받아들인다.
+const args = (a, b) => (typeof a === "function" ? [{}, a] : [a || {}, b]);
+
 io.on("connection", socket => {
   let myRoom = null;       // 이 소켓이 들어가 있는 방
   let myPlayer = null;     // 학생인 경우
@@ -75,7 +80,8 @@ io.on("connection", socket => {
   };
 
   /* --- 진행자 --- */
-  socket.on("host:create", (_payload, ack) => {
+  socket.on("host:create", (a, b) => {
+    const [, ack] = args(a, b);
     const room = rooms.create();
     if (!room) return ack?.({ error: "방을 더 만들 수 없어요." });
     myRoom = room; isHost = true;
@@ -84,7 +90,8 @@ io.on("connection", socket => {
     ack?.({ code: room.code, hostToken: room.hostToken, joinBase: joinBase(socket.request), snapshot: room.snapshot() });
   });
 
-  socket.on("host:resume", ({ code, hostToken } = {}, ack) => {
+  socket.on("host:resume", (a, b) => {
+    const [{ code, hostToken }, ack] = args(a, b);
     const room = rooms.get(code);
     if (!room || room.hostToken !== hostToken) return ack?.({ error: "방을 찾을 수 없어요." });
     myRoom = room; isHost = true;
@@ -104,7 +111,8 @@ io.on("connection", socket => {
   socket.on("host:close", hostOnly(() => myRoom.close()));
 
   /* --- 학생 --- */
-  socket.on("play:join", ({ code, name, color, playerToken } = {}, ack) => {
+  socket.on("play:join", (a, b) => {
+    const [{ code, name, color, playerToken }, ack] = args(a, b);
     const room = rooms.get(code);
     if (!room || room.closed) return ack?.({ error: "그런 입장 코드가 없어요. 진행자 화면의 숫자를 다시 확인해 주세요." });
     const r = room.join({ name, color, playerToken, socketId: socket.id });
@@ -124,15 +132,19 @@ io.on("connection", socket => {
     myRoom.move(myPlayer, x, y);
   });
 
-  socket.on("play:lock", (_p, ack) => {
-    if (!myRoom || !myPlayer || myRoom.closed) return ack?.({ ok: false });
-    ack?.(myRoom.lock(myPlayer));
+  socket.on("play:lock", (a, b) => {
+    const [, ack] = args(a, b);
+    if (!myRoom || !myPlayer || myRoom.closed) return ack?.({ ok: false, reason: "room" });
+    const res = myRoom.lock(myPlayer);        // ack 가 없어도 반드시 실행되게 먼저 계산한다
+    ack?.(res);
   });
 
   // 힌트는 물어본 학생에게만 간다.
-  socket.on("play:hint", (_p, ack) => {
+  socket.on("play:hint", (a, b) => {
+    const [, ack] = args(a, b);
     if (!myRoom || !myPlayer || myRoom.closed) return ack?.({ hint: null });
-    ack?.({ hint: myRoom.hintFor(myPlayer) });
+    const hint = myRoom.hintFor(myPlayer);
+    ack?.({ hint });
   });
 
   socket.on("disconnect", leaveRoom);

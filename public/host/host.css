@@ -1,0 +1,60 @@
+/* 진행자 화면은 부스의 큰 모니터에 띄운다. 마당을 크게, 조작판은 오른쪽에. */
+body{padding-inline:20px}
+.band{margin-inline:-20px}
+.hwrap{max-width:1680px; margin:0 auto; padding-top:var(--s4); display:flex; flex-direction:column; gap:var(--s4)}
+.htop{display:flex; align-items:center; justify-content:space-between; gap:var(--s4); flex-wrap:wrap}
+.htop .logo em{font-style:normal; font-family:var(--sans); font-size:16px; font-weight:400; color:var(--meok-muted)}
+.htop-right{display:flex; gap:var(--s2); flex-wrap:wrap}
+.hl{color:var(--red)}
+.start{align-items:center; text-align:center}
+.btn.big{font-size:24px; min-height:72px; padding-inline:var(--s8)}
+
+.grid{display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:var(--s4); align-items:start}
+.col-main{display:flex; flex-direction:column; gap:var(--s4); min-width:0}
+.col-side{display:flex; flex-direction:column; gap:var(--s4)}
+.card{background:var(--hanji-deep); border:1px solid var(--hairline); border-radius:var(--r-md); padding:var(--s4); display:flex; flex-direction:column; gap:var(--s2)}
+
+.codecard{align-items:center; text-align:center}
+.code{font-family:var(--serif); font-weight:700; font-size:72px; line-height:1.1; letter-spacing:.14em; color:var(--red); font-variant-numeric:tabular-nums}
+.qr{width:100%; max-width:260px; aspect-ratio:1; background:#fff; border:8px solid #fff; border-radius:var(--r-md); display:grid; place-items:center}
+.qr svg{width:100%; height:100%; display:block}
+#joinurl{word-break:break-all}
+
+.big-q{font-size:34px; line-height:46px}
+.timer .sec{font-size:28px}
+.revealcard{background:var(--hanji); border:2px solid var(--correct); border-radius:var(--r-md); padding:var(--s4) var(--s6); display:flex; flex-direction:column; gap:var(--s2)}
+.rsym{flex:none; width:56px; height:56px; border-radius:50%; display:grid; place-items:center; font-family:var(--serif); font-weight:700; font-size:32px; border:3px solid var(--correct); color:var(--correct)}
+.zones{text-align:center}
+
+.levels{display:grid; grid-template-columns:1fr 1fr; gap:var(--s2)}
+.lvbtn{font:inherit; text-align:left; padding:var(--s2) var(--s4); min-height:60px; border-radius:var(--r-md); border:2px solid var(--hairline); background:var(--hanji); color:var(--meok); cursor:pointer; display:flex; flex-direction:column}
+.lvbtn b{font-family:var(--serif); font-size:20px}
+.lvbtn span{font-size:14px; color:var(--meok-muted)}
+.lvbtn[aria-pressed="true"]{border-color:var(--red); background:var(--hanji); box-shadow:inset 0 0 0 2px var(--red)}
+.lvbtn:disabled{opacity:.5; cursor:not-allowed}
+
+.players{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; max-height:360px; overflow:auto}
+.players li{display:flex; align-items:center; gap:var(--s2); background:var(--hanji); border:1px solid var(--hairline); border-radius:var(--r-sm); padding:4px var(--s2)}
+.players canvas{flex:none; width:32px; height:40px}
+.players .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:17px}
+.players .sc{font-family:var(--serif); font-weight:700; font-variant-numeric:tabular-nums}
+.players .off{color:var(--meok-muted); font-size:13px}
+.players .lock{color:var(--cheong); font-size:13px; font-weight:700}
+.kick{font:inherit; font-size:13px; min-height:32px; padding:2px 10px; border-radius:var(--r-sm); border:1px solid var(--hairline); background:transparent; color:var(--meok-muted); cursor:pointer}
+.kick:hover{border-color:var(--wrong); color:var(--wrong)}
+
+.final-list li{padding:var(--s4)}
+.final-list .no{font-size:28px}
+.final-list .nm{font-size:22px}
+.final-list .sc{font-size:26px}
+.final-list .ti{font-family:var(--serif); font-weight:700; font-size:20px; color:var(--red)}
+.result{align-items:stretch; text-align:left}
+.result .display{text-align:center}
+.result .actions{justify-content:center}
+
+@media (max-width:1100px){
+  .grid{grid-template-columns:1fr}
+  .col-side{order:-1}
+  .codecard{flex-direction:row; justify-content:space-around; text-align:left}
+  .qr{max-width:180px}
+}
