@@ -2,7 +2,7 @@
 // 내 캐릭터는 내 기기에서 바로 움직이고, 다른 학생은 서버가 보내 준 위치를 보간해서 부드럽게 그린다.
 import { W, H, START, SCROLL, clampYard, zoneAt } from "./map.js";
 import { COLORS, SPEED } from "./consts.js";
-import { drawYard, drawZones, drawTeacher, drawScroll, drawTarget, drawPlayer, cv } from "./draw.js";
+import { drawYard, drawZones, drawTeacher, drawScroll, drawTarget, drawPlayer, setTextScale, cv } from "./draw.js";
 
 const SEND_HZ = 12;                 // 내 위치를 서버로 보내는 횟수(초당)
 const LERP_MS = 110;                // 서버가 위치를 뿌리는 주기(100ms)보다 살짝 길게 잡아 끊기지 않게
@@ -128,6 +128,8 @@ export function createYard(canvas, opts = {}){
   function draw(){
     const dpr = canvas.width / W;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // 화면에서 작아진 만큼 글자를 키워 폰에서도 이름표가 보이게 한다
+    setTextScale(canvas.clientWidth ? W / canvas.clientWidth : 1);
     drawYard(ctx);
     drawZones(ctx, {
       zones: S.zones, type: S.type,

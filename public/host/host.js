@@ -57,6 +57,12 @@ function enterRoom(res){
   applySnapshot(res.snapshot);
 }
 
+$("codecard").onclick = () => {
+  const c = $("codecard");
+  c.dataset.open = c.classList.contains("compact") ? "1" : "";
+  c.classList.toggle("compact");
+};
+
 function ensureYard(){
   if (yard) return;
   yard = createYard($("yard"), { spectator: true });
@@ -108,6 +114,11 @@ function render(s){
   $("pcount").textContent = s.count;
   yard?.setMeta(s.players);
   renderPlayers(s.players, s.phase);
+  $("lobbycard").hidden = s.phase !== "lobby";
+  $("levelcard").hidden = s.phase === "question" || s.phase === "reveal";
+  // 대기실에서는 QR을 크게, 게임 중에는 접어 둔다(눌러서 다시 펼 수 있다)
+  $("codecard").classList.toggle("compact", s.phase !== "lobby" && !$("codecard").dataset.open);
+  $("lobbyCount").textContent = `${s.count}명`;
   if (s.phase === "lobby"){ $("qcard").hidden = true; $("revealcard").hidden = true; $("boardcard").hidden = true; $("zoneline").textContent = ""; }
 }
 

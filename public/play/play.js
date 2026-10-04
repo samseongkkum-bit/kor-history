@@ -132,13 +132,37 @@ function openHint(){
 function applySnapshot(s){
   if (!s) return show("s-wait");
   total = s.total || 10;
+  if (s.you) me.score = s.you.score;
   if (s.phase === "lobby"){ waiting(s); return; }
-  if (s.phase === "question" && s.question){ onQuestion(s.question); return; }
+  if (s.phase === "question" && s.question){
+    onQuestion(s.question);
+    if (s.you?.pending){
+      $("where").textContent = "다음 문제부터 함께해요! 마당을 걸어 다녀도 돼요.";
+      $("decide").disabled = true; $("decide").dataset.locked = "1";
+    } else if (s.you?.locked){
+      // 새로고침 전에 이미 자리를 정했다면 그 상태를 그대로 이어받는다
+      $("decide").dataset.locked = "1"; $("decide").disabled = true;
+      $("decide").textContent = "여기로 정했어요!";
+      $("where").textContent = "자리를 정했어요. 채점을 기다려요!";
+      yard.freeze(true);
+    }
+    if (s.you?.hintUsed) openHint();
+    return;
+  }
   if (s.phase === "reveal" && s.reveal){
     onQuestion({ ...s.reveal.question, qIndex: s.reveal.qIndex, total: s.reveal.total, startAt: 0, endAt: 0, now: Date.now(), seconds: 0 }, true);
     stopTimer(); $("tsec").textContent = "끝!";
-    yard.setReveal({ answer: s.reveal.answer, picked: undefined });
-    showFeedbackFromReveal(s.reveal);
+    if (s.you?.answered){
+      yard.setReveal({ answer: s.reveal.answer, picked: s.you.picked });
+      showMyResult({
+        qIndex: s.reveal.qIndex, correct: s.you.correct, picked: s.you.picked,
+        answer: s.reveal.answer, answerLabel: s.reveal.answerLabel, explain: s.reveal.explain,
+        score: s.you.score, timeout: s.you.picked === null
+      });
+    } else {
+      yard.setReveal({ answer: s.reveal.answer, picked: undefined });
+      showFeedbackFromReveal(s.reveal);
+    }
     return;
   }
   if (s.phase === "final" && s.final){ onFinal(s.final); return; }
@@ -173,6 +197,10 @@ function onQuestion(q, quiet){
   $("qnum").textContent = `${(q.qIndex ?? 0) + 1} / ${total}`;
   $("qkind").textContent = q.type === "ox" ? "O/X" : "객관식";
   $("qtext").textContent = q.q;
+  if (q.type === "mc" && q.choices){
+    $("choices").innerHTML = q.choices.map((c, k) => `<li><b>${NUMS[k]}</b><span>${esc(c)}</span></li>`).join("");
+    $("choices").hidden = false;
+  } else $("choices").hidden = true;
   $("dots").innerHTML = Array.from({ length: total }, (_, k) =>
     `<i class="${k < answers.length ? (answers[k] ? "ok" : "no") : (k === q.qIndex ? "now" : "")}"></i>`).join("");
   $("fb").hidden = true;
@@ -210,7 +238,9 @@ socket.on("room:reveal", r => {
   yard?.setReveal({ answer: r.answer, picked: window.__myPicked });
 });
 
-socket.on("play:result", r => {
+socket.on("play:result", r => showMyResult(r));
+
+function showMyResult(r){
   window.__myPicked = r.picked;
   answers[r.qIndex] = r.correct;
   me.score = r.score;
@@ -230,7 +260,7 @@ socket.on("play:result", r => {
   document.querySelector("#s-quiz .controls").hidden = true;
   $("fb").hidden = false;
   show("s-quiz");
-});
+}
 
 // 중간에 들어와서 이 문제는 채점하지 않은 경우에도 해설은 볼 수 있게 한다.
 function showFeedbackFromReveal(r){
@@ -259,6 +289,9 @@ function onFinal(f){
   $("finalSay").textContent = r.say;
   $("ladder").innerHTML = RANKS.map(x => `<span class="${x.title === r.title ? "on" : ""}">${x.title}</span>`).join("");
   $("finalPlace").textContent = mine ? `${f.ranking.length}명 중 ${mine.place}등이에요` : "";
+  // 칭호는 10점 만점 기준이라, 10문제를 다 못 풀고 끝났으면 그 점을 알려 준다
+  $("finalNote").hidden = f.questions >= 10;
+  $("finalNote").textContent = f.questions < 10 ? `칭호는 10문제(10점 만점) 기준이에요. 이번에는 ${f.questions}문제만 풀었어요.` : "";
   $("againBtn").onclick = () => { LS.del("code"); location.href = "/play"; };
   show("s-final");
   window.scrollTo({ top: 0, behavior: "smooth" });

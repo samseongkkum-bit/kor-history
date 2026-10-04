@@ -5,6 +5,12 @@ import { NUMS } from "./consts.js";
 
 export const cv = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+// 마당은 960px 기준으로 그린 뒤 화면 너비에 맞춰 줄어든다. 폰에서는 많이 줄어들어
+// 이름표 같은 작은 글자가 안 보이므로, 화면에서의 크기가 비슷해지도록 글자만 키운다.
+let textK = 1;
+export const setTextScale = k => { textK = Math.max(1, Math.min(2.6, k || 1)); };
+const fs = px => Math.round(px * textK);
+
 export function roundRect(ctx,x,y,w,h,r){ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();}
 
 export function drawPerson(ctx,x,y,opt){
@@ -76,12 +82,14 @@ export function drawZones(ctx, {zones, type, me, answered, answer, picked, count
     if(type==="ox"){
       ctx.fillStyle = z.key==="O" ? C.cheong : C.red;
       ctx.font = `700 150px ${cv("--serif")}`; ctx.fillText(z.label, z.x+z.w/2, z.y+z.h/2-14);
-      ctx.fillStyle = C.muted; ctx.font = `22px ${cv("--sans")}`; ctx.fillText(z.sub, z.x+z.w/2, z.y+z.h-30);
+      ctx.fillStyle = C.muted; ctx.font = `${fs(22)}px ${cv("--sans")}`; ctx.fillText(z.sub, z.x+z.w/2, z.y+z.h-30);
     } else {
       ctx.fillStyle = C.cheong; ctx.font = `700 40px ${cv("--serif")}`; ctx.fillText(z.label, z.x+40, z.y+z.h/2);
-      ctx.fillStyle = C.meok; ctx.font = `26px ${cv("--sans")}`; ctx.textAlign="left";
+      const mcSize = Math.round(26 * Math.min(textK, 1.45));
+      ctx.fillStyle = C.meok; ctx.font = `${mcSize}px ${cv("--sans")}`; ctx.textAlign="left";
       const lines = wrapText(ctx, z.sub, z.w-100);
-      lines.forEach((l,i)=> ctx.fillText(l, z.x+76, z.y+z.h/2 + (i-(lines.length-1)/2)*32));
+      const lh = mcSize + 6;
+      lines.forEach((l,i)=> ctx.fillText(l, z.x+76, z.y+z.h/2 + (i-(lines.length-1)/2)*lh));
     }
     if(answered && (z.key===answer || (picked!==undefined && picked!==null && z.key===picked))){
       ctx.textAlign="right"; ctx.font = `700 34px ${cv("--serif")}`;
@@ -90,7 +98,7 @@ export function drawZones(ctx, {zones, type, me, answered, answer, picked, count
     // 진행자 화면: 구역별 인원 수
     if(counts){
       const n = counts[String(z.key)] || 0;
-      ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.font = `700 26px ${cv("--serif")}`;
+      ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.font = `700 ${fs(26)}px ${cv("--serif")}`;
       const label = `${n}명`, tw = ctx.measureText(label).width + 20;
       ctx.fillStyle = C.meok; ctx.globalAlpha = .85; roundRect(ctx, z.x+14, z.y+12, tw, 34, 10); ctx.fill(); ctx.globalAlpha = 1;
       ctx.fillStyle = cv("--hanji"); ctx.fillText(label, z.x+24, z.y+30);
@@ -101,7 +109,7 @@ export function drawZones(ctx, {zones, type, me, answered, answer, picked, count
 // 훈장님
 export function drawTeacher(ctx){
   drawPerson(ctx, 480, 118, {upper:cv("--hanji"), lower:cv("--hanji"), ribbon:cv("--meok-muted"), hat:true});
-  ctx.fillStyle = cv("--meok"); ctx.font = `15px ${cv("--sans")}`; ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillText("훈장님", 480, 156);
+  ctx.fillStyle = cv("--meok"); ctx.font = `${fs(15)}px ${cv("--sans")}`; ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillText("훈장님", 480, 156);
 }
 
 // 힌트 두루마리
@@ -112,7 +120,7 @@ export function drawScroll(ctx, t, {near, open}){
   ctx.fillStyle = cv("--hwang"); ctx.fillRect(-26,-18,6,36); ctx.fillRect(20,-18,6,36);
   ctx.fillStyle = cv("--meok"); ctx.font = `700 18px ${cv("--serif")}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("?",0,1);
   ctx.restore();
-  ctx.fillStyle = cv("--meok-muted"); ctx.font = `14px ${cv("--sans")}`; ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillText("힌트", SCROLL.x, SCROLL.y+40);
+  ctx.fillStyle = cv("--meok-muted"); ctx.font = `${fs(14)}px ${cv("--sans")}`; ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillText("힌트", SCROLL.x, SCROLL.y+40);
 }
 
 // 걸어가는 목표 표시
@@ -122,10 +130,11 @@ export function drawTarget(ctx, target){
 
 // 이름표
 export function drawNameTag(ctx, x, y, text, {small} = {}){
-  ctx.font = `700 ${small?13:16}px ${cv("--sans")}`; ctx.textAlign="center"; ctx.textBaseline="alphabetic";
-  const tw = ctx.measureText(text).width + 16, h = small ? 20 : 24;
+  const size = fs(small ? 13 : 16);
+  ctx.font = `700 ${size}px ${cv("--sans")}`; ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+  const tw = ctx.measureText(text).width + size, h = Math.round(size * 1.5);
   ctx.fillStyle = cv("--meok"); ctx.globalAlpha=.85; roundRect(ctx, x-tw/2, y+28, tw, h, 8); ctx.fill(); ctx.globalAlpha=1;
-  ctx.fillStyle = cv("--hanji"); ctx.fillText(text, x, y+28+h-7);
+  ctx.fillStyle = cv("--hanji"); ctx.fillText(text, x, y+28+h-Math.round(size*.42));
 }
 
 // 학생 한 명(나 또는 남). mine=false면 조금 흐리게.

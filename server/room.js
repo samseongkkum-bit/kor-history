@@ -275,7 +275,8 @@ export class Room {
   }
 
   // 새로고침한 화면이 지금 상황을 그대로 이어받도록, 현재 단계에 필요한 내용을 한 번에 담아 보낸다.
-  snapshot(){
+  // forPlayerId 를 주면 그 학생 본인의 상황(자리를 정했는지, 이 문제를 맞혔는지)도 함께 담는다.
+  snapshot(forPlayerId){
     const s = this.state();
     if (this.phase === "question") s.question = this.questionPayload();
     if (this.phase === "reveal" || this.phase === "final"){
@@ -292,6 +293,17 @@ export class Room {
       const ranking = rank([...this.players.values()]);
       s.final = { ranking, questions: this.qIndex + 1, todayTotal: participation.todayTotal(),
         ranks: ranking.map(r => ({ id: r.id, score: r.score, title: r.title, say: rankOf(r.score).say })) };
+    }
+    const me = forPlayerId && this.players.get(forPlayerId);
+    if (me){
+      const mine = me.answers[this.qIndex];
+      s.you = {
+        score: me.score, pending: me.pending, hintUsed: me.hintUsed,
+        locked: !!me.lockedPos,
+        answered: this.phase !== "question" && mine !== undefined && mine !== null,
+        correct: mine ? mine.correct : undefined,
+        picked: mine ? mine.picked : undefined
+      };
     }
     return s;
   }

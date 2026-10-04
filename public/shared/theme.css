@@ -21,12 +21,15 @@
   color-scheme:dark}
 
 *{box-sizing:border-box}
+/* hidden 속성이 .board{display:flex} 같은 규칙에 덮이지 않게 한다 */
+[hidden]{display:none!important}
 body{
   margin:0;
   background-color:var(--hanji); color:var(--meok);
   background-image:linear-gradient(var(--lattice) 2px,transparent 2px),linear-gradient(90deg,var(--lattice) 2px,transparent 2px);
   background-size:56px 56px;
   font-family:var(--sans); font-size:18px; line-height:28px;
+  word-break:keep-all; overflow-wrap:break-word;   /* 한국어 낱말 가운데서 줄이 바뀌지 않게 */
   padding-inline:16px; padding-block:0 var(--s8);
 }
 .band{height:12px; margin-inline:-16px; background:repeating-linear-gradient(90deg,var(--red) 0 40px,var(--hanji-deep) 40px 46px,var(--cheong) 46px 86px,var(--hanji-deep) 86px 92px,var(--hwang) 92px 112px,var(--hanji-deep) 112px 118px)}

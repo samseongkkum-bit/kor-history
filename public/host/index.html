@@ -30,13 +30,19 @@
 
     <!-- 왼쪽: 마당 -->
     <div class="col-main">
+      <div class="lobbycard" id="lobbycard">
+        <p class="cap muted">대기실</p>
+        <p class="n" id="lobbyCount">0명</p>
+        <p>학생들이 오른쪽 <b>QR 코드</b>를 찍거나 <b>입장 코드</b>를 넣으면 이 마당에 나타나요.</p>
+        <p class="cap muted">모두 들어오면 단계를 고르고 <b>게임 시작</b>을 누르세요.</p>
+      </div>
       <div class="qcard" id="qcard" hidden>
         <div class="qhead">
-          <span class="qnum" id="qnum">1 / 10</span>
-          <span class="badge" id="qkind">O/X</span>
+          <span class="qnum" id="qnum"></span>
+          <span class="badge" id="qkind"></span>
         </div>
         <h2 class="question big-q" id="qtext"></h2>
-        <div class="timer"><div class="bar"><div class="fill" id="tfill"></div></div><span class="sec" id="tsec">0초</span></div>
+        <div class="timer"><div class="bar"><div class="fill" id="tfill"></div></div><span class="sec" id="tsec"></span></div>
       </div>
 
       <div class="revealcard" id="revealcard" hidden>
@@ -56,16 +62,11 @@
 
     <!-- 오른쪽: 조작판 -->
     <aside class="col-side">
-      <div class="card codecard">
+      <div class="card codecard" id="codecard">
         <p class="cap muted">입장 코드</p>
-        <div class="code" id="code">0000</div>
+        <div class="code" id="code"></div>
         <div class="qr" id="qr"></div>
         <p class="cap muted" id="joinurl"></p>
-      </div>
-
-      <div class="card">
-        <p class="cap muted">단계</p>
-        <div class="levels" id="levels"></div>
       </div>
 
       <div class="card">
@@ -79,6 +80,11 @@
       <div class="card" id="boardcard" hidden>
         <p class="cap muted">지금 순위 (상위 5명)</p>
         <ol class="board-list" id="top5"></ol>
+      </div>
+
+      <div class="card" id="levelcard">
+        <p class="cap muted">단계</p>
+        <div class="levels" id="levels"></div>
       </div>
 
       <div class="card">

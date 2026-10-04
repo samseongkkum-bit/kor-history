@@ -56,11 +56,12 @@
       <div class="qcard">
         <div class="progress" id="dots" aria-hidden="true"></div>
         <div class="qhead">
-          <span class="qnum" id="qnum">1 / 10</span>
-          <span class="badge" id="qkind">O/X</span>
+          <span class="qnum" id="qnum"></span>
+          <span class="badge" id="qkind"></span>
         </div>
         <h2 class="question" id="qtext"></h2>
-        <div class="timer"><div class="bar"><div class="fill" id="tfill"></div></div><span class="sec" id="tsec">0초</span></div>
+        <ol class="choices" id="choices" hidden></ol>
+        <div class="timer"><div class="bar"><div class="fill" id="tfill"></div></div><span class="sec" id="tsec"></span></div>
       </div>
       <div class="stage" id="stage" tabindex="0" aria-label="한옥 마당. 방향키로 캐릭터를 움직여 정답 자리에 서세요.">
         <canvas id="yard" width="1920" height="1200"></canvas>
@@ -83,9 +84,9 @@
       </div>
       <div class="feedback" id="fb" hidden>
         <div class="verdict" id="verdict">
-          <span class="sym" id="vsym" aria-hidden="true">○</span>
+          <span class="sym" id="vsym" aria-hidden="true"></span>
           <div>
-            <h2 id="vtitle">정답이에요!</h2>
+            <h2 id="vtitle"></h2>
             <p class="muted" id="vsub" hidden></p>
           </div>
         </div>
@@ -98,10 +99,11 @@
     <!-- ④ 최종 결과 -->
     <section class="board result" id="s-final" hidden>
       <p class="muted" id="finalWho"></p>
-      <div class="score" id="finalScore">0<small> / 10</small></div>
-      <div class="rank"><p class="muted">오늘의 칭호</p><div class="title" id="finalTitle">평민</div><p id="finalSay"></p></div>
+      <div class="score" id="finalScore"></div>
+      <div class="rank"><p class="muted">오늘의 칭호</p><div class="title" id="finalTitle"></div><p id="finalSay"></p></div>
       <div class="ladder" id="ladder" aria-label="칭호 단계"></div>
       <p class="pill" id="finalPlace"></p>
+      <p class="cap muted" id="finalNote" hidden></p>
       <p class="cap muted">함께해 줘서 고마워요! 다음 사람에게 기기를 전해 주세요.</p>
       <div class="actions"><button class="btn btn-secondary" type="button" id="againBtn">다른 방에 들어가기</button></div>
     </section>

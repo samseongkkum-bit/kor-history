@@ -122,7 +122,7 @@ io.on("connection", socket => {
     ack?.({
       playerId: r.player.id, playerToken: r.player.token,
       name: r.player.name, color: r.player.color, score: r.player.score,
-      rejoined: r.rejoined, snapshot: room.snapshot()
+      rejoined: r.rejoined, snapshot: room.snapshot(r.player.id)
     });
     room.sendState();
   });
