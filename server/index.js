@@ -19,6 +19,7 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_URL = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 
 const app = express();
+app.set("trust proxy", true);   // Render·Railway 같은 곳에서 앞단을 거쳐 들어올 때
 const http = createServer(app);
 const io = new Server(http, { pingTimeout: 20000, pingInterval: 8000 });
 const rooms = new Rooms(io);
@@ -40,7 +41,9 @@ function joinBase(req){
   const hostname = host.split(":")[0];
   // 진행자가 localhost로 열었다면 학생 기기가 쓸 수 있는 내부 IP로 바꿔 준다.
   if (!hostname || hostname === "localhost" || hostname === "127.0.0.1") return `http://${bestLanAddress()}:${PORT}`;
-  return `http://${host}`;
+  // 인터넷에 올렸을 때(Render·Railway)는 앞단이 https로 받아 준다.
+  const proto = String(req?.headers?.["x-forwarded-proto"] || "").split(",")[0].trim() || "http";
+  return `${proto}://${host}`;
 }
 
 app.get("/api/info", (req, res) => {

@@ -10,7 +10,11 @@ const file = join(dir, "participation.jsonl");
 const todayStr = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 
+// 테스트에서는 실제 기록을 남기지 않는다(npm test 가 HQ_PARTICIPATION=off 로 실행한다).
+const OFF = process.env.HQ_PARTICIPATION === "off";
+
 export function append({ level, levelName, players, avgScore, questions }){
+  if (OFF) return;
   const now = new Date();
   const line = JSON.stringify({
     date: todayStr(now),
@@ -28,7 +32,7 @@ export function append({ level, levelName, players, avgScore, questions }){
 
 // 오늘 참여 인원 합계(게임 단위 합계). 파일이 없으면 0.
 export function todayTotal(){
-  if (!existsSync(file)) return 0;
+  if (OFF || !existsSync(file)) return 0;
   const today = todayStr();
   let sum = 0;
   try {

@@ -1,0 +1,16 @@
+# Render(https://render.com) 무료 플랜 설정. 저장소를 연결하면 이 파일대로 올라갑니다.
+services:
+  - type: web
+    name: hanguksa-quiz
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/info
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # 배포 주소를 여기에 적으면 진행자 화면 QR이 그 주소를 가리킵니다.
+      # 예: https://hanguksa-quiz.onrender.com  (처음 배포한 뒤 주소가 정해지면 적어 주세요)
+      - key: PUBLIC_URL
+        sync: false
