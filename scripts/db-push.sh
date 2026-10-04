@@ -6,6 +6,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env.local ] && set -a && . ./.env.local && set +a || true
 case "${SUPABASE_DB_URL:-}" in *xxxxx*|*"...."*|*"비밀번호"*) SUPABASE_DB_URL="" ;; esac
+if [ -n "${SUPABASE_DB_URL:-}" ] && ! PGCONNECT_TIMEOUT=8 psql -d "$SUPABASE_DB_URL" -At -c "select 1" >/dev/null 2>&1; then
+  echo "SUPABASE_DB_URL 로 연결되지 않았어요(직접 연결 주소는 IPv6 전용입니다)."
+  SUPABASE_DB_URL=""
+fi
 
 node scripts/make-seed.mjs
 node scripts/build-sql.mjs

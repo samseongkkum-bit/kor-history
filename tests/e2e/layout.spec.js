@@ -1,6 +1,6 @@
 // 폰(390px)과 태블릿에서 학생 화면의 글자가 잘리거나 버튼이 겹치지 않는지 확인하고 스크린샷을 남긴다.
 import { test, expect } from "@playwright/test";
-import { createRoom, joinAs, answer, findQuestion } from "./helpers.js";
+import { createRoom, joinAs, answer, findQuestion, rpc, restartUntilChoice } from "./helpers.js";
 
 const SIZES = [
   { tag: "phone-390",  width: 390,  height: 844 },
@@ -130,36 +130,30 @@ test("학생 화면이 폰과 태블릿에서 깨지지 않는다", async ({ bro
 });
 
 test("중등부 객관식도 폰에서 보기가 읽힌다", async ({ browser }) => {
-  test.setTimeout(120_000);
-  const host = await (await browser.newContext()).newPage();
-  host.on("dialog", d => d.accept());
-  const code = await createRoom(host);
-  await host.locator('[data-level="mid"]').click();
+  test.setTimeout(180_000);
+  // 객관식이 1번 문제로 나올 때까지 판을 다시 뽑는다(문제를 하나씩 넘기면 제한 시간만큼 기다려야 한다).
+  const room = await rpc("host_create_room");
+  await rpc("host_set_level", { p_code: room.code, p_token: room.hostToken, p_level: "mid" });
 
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
-  await joinAs(page, code, "중등이");
-  await host.getByRole("button", { name: "게임 시작" }).click();
+  await joinAs(page, room.code, "중등이");
+  await restartUntilChoice(room.code, room.hostToken);
 
-  // 객관식 문제가 나올 때까지 넘긴다
-  for (let i = 0; i < 10; i++){
-    await expect(page.locator("#qtext")).not.toBeEmpty({ timeout: 30_000 });
-    if (await page.locator("#qkind").textContent() === "객관식") break;
-    await expect(host.locator("#nextBtn")).toBeVisible({ timeout: 30_000 });
-    await host.locator("#nextBtn").click();
-    await page.waitForTimeout(300);
-  }
-  await expect(page.locator("#qkind")).toHaveText("객관식");
+  await expect(page.locator("#qkind")).toHaveText("객관식", { timeout: 30_000 });
   const items = page.locator("#choices li");
   await expect(items).toHaveCount(4);                 // 보기 4개가 문제 밑에도 적혀 있다
+  for (let i = 0; i < 4; i++) await expect(items.nth(i)).not.toBeEmpty();
   await page.screenshot({ path: "screenshots/play-3-quiz-mc-phone-390.png", fullPage: true });
   await checkNoOverflow(page, "phone-390 객관식");
   await checkFontSize(page, "phone-390 객관식");
+  await checkButtons(page, "phone-390 객관식");
 
   await answer(page, "mc", 0, { lock: false });        // 첫 번째 자리로 걸어가 본다
   await expect(page.locator("#decide")).toBeEnabled({ timeout: 10_000 });
+
+  await rpc("host_close", { p_code: room.code, p_token: room.hostToken });
   await ctx.close();
-  await host.context().close();
 });
 
 test("진행자 화면도 노트북과 큰 모니터에서 깨지지 않는다", async ({ browser }) => {

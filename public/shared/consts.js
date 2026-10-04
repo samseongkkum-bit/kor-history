@@ -1,5 +1,5 @@
 // 단일 파일(hanguksa-quiz-single.html)의 상수를 그대로 옮긴 것.
-// 서버(server/*)와 브라우저(public/*)가 같은 파일을 가져다 쓴다.
+// 같은 값이 Postgres 함수(supabase/migrations/0002_geometry.sql)에도 들어 있다.
 
 export const RANKS = [
   {min:0,  title:"천민", say:"이제 막 역사 여행을 시작했어요. 다시 풀면 금방 올라갈 수 있어요!"},

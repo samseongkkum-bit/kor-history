@@ -6,8 +6,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env.local ] && set -a && . ./.env.local && set +a || true
 
-# 예시 그대로인 값은 없는 것으로 친다
+# 예시 그대로이거나 연결되지 않는 값은 없는 것으로 치고 로컬로 돌린다
 case "${SUPABASE_DB_URL:-}" in *xxxxx*|*"...."*|*"비밀번호"*) SUPABASE_DB_URL="" ;; esac
+if [ -n "${SUPABASE_DB_URL:-}" ] && ! PGCONNECT_TIMEOUT=8 psql -d "$SUPABASE_DB_URL" -At -c "select 1" >/dev/null 2>&1; then
+  echo "SUPABASE_DB_URL 로 연결되지 않아 로컬 Postgres 로 돌립니다."
+  echo "  (Supabase 대시보드 → Connect → Session pooler 의 URI 를 넣어 주세요. 직접 연결 주소는 IPv6 전용입니다.)"
+  SUPABASE_DB_URL=""
+fi
 
 if [ -n "${SUPABASE_DB_URL:-}" ]; then
   DB="$SUPABASE_DB_URL"
