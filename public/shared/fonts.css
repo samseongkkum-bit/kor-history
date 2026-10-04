@@ -1,0 +1,9 @@
+/* 고운바탕(제목) / 고운돋움(본문).
+   인터넷이 되면 구글 폰트를 받아 쓰고, 안 되면 아래 대체 글꼴로 자연스럽게 내려간다.
+   대체 순서: 사용자가 설치한 나눔 글꼴 → 애플/윈도우 기본 한글 글꼴 → 시스템 글꼴 */
+@import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap");
+
+:root{
+  --serif:"Gowun Batang","Nanum Myeongjo","Apple SD Gothic Neo",'Malgun Gothic',"맑은 고딕",serif;
+  --sans:"Gowun Dodum","Nanum Gothic","Apple SD Gothic Neo",'Malgun Gothic',"맑은 고딕",system-ui,sans-serif;
+}

@@ -1,0 +1,24 @@
+{
+  "name": "hanguksa-quiz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "한옥 마당 한국사 퀴즈 - 여러 명 동시 접속(멀티플레이) 부스용",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "playwright test",
+    "vendor": "node scripts/copy-vendor.mjs",
+    "postinstall": "node scripts/copy-vendor.mjs"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "socket.io-client": "^4.8.1"
+  }
+}
