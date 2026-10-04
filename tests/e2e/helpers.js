@@ -37,8 +37,17 @@ export async function joinAs(page, code, name, color = "red"){
   return name;
 }
 
+// 학생 화면이 그 문제를 그릴 때까지 기다린다(진행자 화면보다 조금 늦게 온다).
+export async function waitForQuestion(page, n, total = 10){
+  await expect(page.locator("#s-quiz")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator("#qnum")).toHaveText(`${n} / ${total}`, { timeout: 30000 });
+  await expect(page.locator("#fb")).toBeHidden({ timeout: 30000 });
+  await expect(page.locator("#decide")).toHaveText("여기로 결정!", { timeout: 30000 });
+}
+
 // 이 문제에서 학생이 설 자리로 걸어가 "여기로 결정!"을 누른다.
-export async function answer(page, type, key, { lock = true } = {}){
+export async function answer(page, type, key, { lock = true, qnum = null } = {}){
+  if (qnum !== null) await waitForQuestion(page, qnum);
   const c = zoneCenter(type, key);
   await walkTo(page, c.x, c.y);
   if (!lock) return;

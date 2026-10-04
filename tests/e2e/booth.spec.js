@@ -1,7 +1,7 @@
 // 부스 한 판을 끝까지 자동으로 진행한다: 진행자 1명 + 학생 3명, 10문제, 점수와 칭호 확인.
 // 학생 한 명은 중간에 새로고침해서 재접속이 되는지도 확인한다.
 import { test, expect } from "@playwright/test";
-import { createRoom, joinAs, answer, findQuestion } from "./helpers.js";
+import { createRoom, joinAs, answer, findQuestion, waitForQuestion } from "./helpers.js";
 
 test("진행자 1명과 학생 3명이 10문제를 끝까지 진행한다", async ({ browser }) => {
   test.setTimeout(400_000);          // O/X 12초 × 10문제 + 채점·해설 시간
@@ -41,14 +41,14 @@ test("진행자 1명과 학생 3명이 10문제를 끝까지 진행한다", asyn
     const right = q.a, wrong = right === "O" ? "X" : "O";
 
     // 학생들이 각자 자리로 걸어가 결정한다
-    await answer(A.page, "ox", right);
-    await answer(B.page, "ox", wrong);
-    await answer(C.page, "ox", i <= 5 ? right : wrong);
+    await answer(A.page, "ox", right,                      { qnum: i });
+    await answer(B.page, "ox", wrong,                      { qnum: i });
+    await answer(C.page, "ox", i <= 5 ? right : wrong,     { qnum: i });
 
     // 4번 문제에서 '다'는 자리를 정한 뒤 새로고침한다(재접속 확인)
     if (i === 4){
       await C.page.reload();
-      await expect(C.page.locator("#chip")).toContainText("다", { timeout: 15_000 });
+      await expect(C.page.locator("#chip")).toContainText("다", { timeout: 20_000 });
       await expect(C.page.locator("#decide")).toHaveText("여기로 정했어요!");   // 정했던 자리를 기억한다
       await expect(C.page.locator("#decide")).toBeDisabled();
     }

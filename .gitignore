@@ -4,3 +4,7 @@ test-results/
 playwright-report/
 screenshots/
 .DS_Store
+.env.local
+.env*.local
+
+public/config.js

@@ -10,8 +10,8 @@ const out = join(root, "public", "vendor");
 mkdirSync(out, { recursive: true });
 
 const files = [
-  ["node_modules/socket.io/client-dist/socket.io.min.js", "socket.io.min.js"],
-  ["node_modules/socket.io/client-dist/socket.io.min.js.map", "socket.io.min.js.map"],
+  ["node_modules/@supabase/supabase-js/dist/umd/supabase.js", "supabase.js"],
+  ["node_modules/qrcode-generator/dist/qrcode.js", "qrcode.js"],
 ];
 
 let missing = 0;

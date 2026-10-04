@@ -9,8 +9,8 @@ export default defineConfig({
   reporter: [["list"]],
   use: { baseURL: "http://127.0.0.1:3100", trace: "off" },
   webServer: {
-    command: "PORT=3100 node server/index.js",
-    url: "http://127.0.0.1:3100/api/info",
+    command: "node scripts/make-config.mjs && PORT=3100 node scripts/dev-server.mjs",
+    url: "http://127.0.0.1:3100/",
     reuseExistingServer: !process.env.CI,
     timeout: 30_000
   },

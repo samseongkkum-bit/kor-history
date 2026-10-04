@@ -106,7 +106,7 @@ test("학생 화면이 폰과 태블릿에서 깨지지 않는다", async ({ bro
   // ④ 채점 화면
   const text = await host.locator("#qtext").textContent();
   const q = findQuestion(text);
-  for (const size of SIZES) await answer(size.page, "ox", q.a);
+  for (const size of SIZES) await answer(size.page, "ox", q.a, { qnum: 1 });
   await expect(host.locator("#revealcard")).toBeVisible({ timeout: 30_000 });
   for (const size of SIZES){
     const page = size.page;

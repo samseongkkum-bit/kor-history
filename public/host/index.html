@@ -22,7 +22,7 @@
     <h1 class="display">한옥 마당에 <span class="hl">학생들을 불러요</span></h1>
     <p class="muted">방을 만들면 4자리 입장 코드와 QR 코드가 나와요. 학생들은 자기 기기로 그 코드를 찍고 들어옵니다.</p>
     <div class="actions"><button class="btn btn-primary big" type="button" id="createBtn">방 만들기</button></div>
-    <p class="cap muted" id="startNote"></p>
+    <p class="cap muted" id="startNote">학생들은 자기 기기로 QR을 찍거나 이 화면의 주소 뒤에 /play 를 붙여 들어옵니다.</p>
   </section>
 
   <!-- ② 진행 -->
@@ -112,6 +112,8 @@
   </section>
 </div>
 
-<script src="/vendor/socket.io.min.js"></script>
+<script src="/config.js"></script>
+<script src="/vendor/supabase.js"></script>
+<script src="/vendor/qrcode.js"></script>
 <script type="module" src="/host/host.js"></script>
 </html>

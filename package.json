@@ -4,17 +4,28 @@
   "private": true,
   "description": "한옥 마당 한국사 퀴즈 - 여러 명 동시 접속(멀티플레이) 부스용",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server/index.js",
     "test": "HQ_PARTICIPATION=off node --test tests/*.test.js",
     "test:e2e": "playwright test",
     "vendor": "node scripts/copy-vendor.mjs",
-    "postinstall": "node scripts/copy-vendor.mjs"
+    "postinstall": "node scripts/copy-vendor.mjs",
+    "dev": "node scripts/make-config.mjs && node scripts/dev-server.mjs",
+    "build": "node scripts/make-config.mjs",
+    "seed": "node scripts/make-seed.mjs && node scripts/build-sql.mjs",
+    "db:push": "./scripts/db-push.sh",
+    "db:check": "node scripts/db-check.mjs",
+    "test:sql": "./scripts/sql-test.sh",
+    "test:live": "node tests/supabase.live.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "express": "^4.21.2",
     "qrcode": "^1.5.4",
+    "qrcode-generator": "^2.0.4",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
