@@ -59,7 +59,29 @@ say(!!joined?.playerToken, "학생 입장");
 say(joined?.snapshot?.count === 1, "대기실 인원 1명");
 say(!JSON.stringify(joined?.snapshot || {}).includes('"answer"'), "대기실 상황에 정답이 섞이지 않는다");
 
-// 4) 정리
+// 4) Realtime 이 켜져 있는지 (방의 단계가 바뀌는 것을 화면이 바로 알아야 한다)
+try {
+  const { createClient } = await import("@supabase/supabase-js");
+  const sb = createClient(url, key, { auth: { persistSession: false } });
+  const got = await new Promise(resolve => {
+    const timer = setTimeout(() => resolve(false), 12000);
+    const ch = sb.channel(`check:${room.code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "rooms", filter: `code=eq.${room.code}` },
+          () => { clearTimeout(timer); resolve(true); })
+      .subscribe(async st => {
+        if (st === "SUBSCRIBED") await rpc("host_set_level", { p_code: room.code, p_token: room.hostToken, p_level: "mid" });
+        if (st === "CHANNEL_ERROR" || st === "TIMED_OUT"){ clearTimeout(timer); resolve(false); }
+      });
+    setTimeout(() => sb.removeChannel(ch), 12500);
+  });
+  say(got, "Realtime 으로 방의 변화를 받는다");
+  if (!got) console.log("    → Supabase 대시보드 Database → Replication 에서 rooms 표가 켜져 있는지 보세요.");
+  sb.realtime.disconnect();
+} catch (e) {
+  say(false, `Realtime 확인 실패: ${e.message}`);
+}
+
+// 5) 정리
 await rpc("host_close", { p_code: room.code, p_token: room.hostToken });
 const gone = await rpc("get_snapshot", { p_code: room.code });
 say((await gone.json()) === null, "점검용 방 정리 완료");

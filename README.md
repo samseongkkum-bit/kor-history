@@ -75,6 +75,9 @@ npm run db:check
 
 `모두 정상이에요` 가 나오면 됩니다.
 
+> 이 단계까지 하고 나면 `participation` 표에 점검용 기록이 한두 줄 남아 있을 수 있습니다.
+> 부스 전에 `supabase/reset-participation.sql` 로 비우고 시작하세요(아래 "참여 인원 기록" 참고).
+
 ### 5단계. Vercel에 올리기
 
 1. 이 폴더를 GitHub 저장소로 올립니다.
@@ -201,6 +204,10 @@ npm start
 | `avg_score` | 평균 점수 |
 
 **학생 이름은 남지 않습니다.**
+
+> **부스 당일 아침에 한 번 지우고 시작하세요.** 시험 삼아 돌려 본 기록이 섞여 있으면
+> "오늘 참여 인원 합계"가 실제보다 크게 나옵니다.
+> SQL Editor 에 `supabase/reset-participation.sql` 을 붙여넣고 Run 하면 비워집니다.
 
 보는 방법: Supabase 대시보드 → **Table Editor** → `participation`.
 엑셀로 받으려면 표 위의 **Export → CSV** 를 누르세요.
