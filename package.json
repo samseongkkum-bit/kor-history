@@ -18,7 +18,8 @@
     "db:push": "./scripts/db-push.sh",
     "db:check": "node scripts/db-check.mjs",
     "test:sql": "./scripts/sql-test.sh",
-    "test:live": "node tests/supabase.live.mjs"
+    "test:live": "node tests/supabase.live.mjs",
+    "test:deployed": "playwright test tests/e2e/live.spec.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

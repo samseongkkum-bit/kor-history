@@ -312,6 +312,7 @@ npm run seed       # questions.json → supabase/all.sql 다시 만들기
 npm test           # SQL 함수 테스트 (로컬 Postgres 에 임시 DB를 만들어 돌림)
 npm run test:live  # 실제 Supabase 에 대고 한 판(10문제) 돌려 보기 (약 3분)
 npm run test:e2e   # Playwright: 진행자 1명 + 학생 3명 한 판, 폰·태블릿 레이아웃
+npm run test:deployed   # 실제 배포 주소에서 한 판 (BASE=https://... 로 주소 지정 가능)
 ```
 
 > `SUPABASE_DB_URL` 을 쓰려면 Supabase 대시보드 → **Connect → Session pooler** 의 URI 를 넣으세요.
