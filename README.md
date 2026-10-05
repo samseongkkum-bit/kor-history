@@ -43,16 +43,25 @@ npm install
    - **Plan**: Free
 3. 2분쯤 기다리면 준비됩니다.
 
-### 3단계. 열쇠 두 개를 `.env.local`에 넣기
+### 3단계. 열쇠 두 개를 적어 두기
 
 Supabase 대시보드 **Project Settings(톱니바퀴) → API** 에서 두 가지를 복사합니다.
 
-이 폴더에 **`.env.local`** 이라는 파일을 만들고 이렇게 적으세요.
+**`supabase/public-config.json`** 을 열어 두 줄을 바꾸세요.
 
+```json
+{
+  "supabaseUrl": "https://여기에_Project_URL",
+  "supabaseAnonKey": "여기에_anon_public_키"
+}
 ```
-SUPABASE_URL=https://여기에_Project_URL
-SUPABASE_ANON_KEY=여기에_anon_public_키
-```
+
+이 파일은 저장소에 함께 올라갑니다. **그래도 괜찮습니다** — `anon` 키는 원래
+브라우저에 담아 쓰라고 만든 공개 열쇠이고, 표에 손대는 것은 4단계에서 거는
+잠금 규칙(RLS)이 막습니다. 덕분에 **Vercel에 환경 변수를 따로 넣지 않아도 됩니다.**
+
+> 키를 저장소에 두기 싫으면 `.env.local` 파일에 `SUPABASE_URL=` / `SUPABASE_ANON_KEY=` 로
+> 적어 두거나 Vercel 환경 변수에 넣어도 됩니다. 그쪽이 있으면 그 값이 우선합니다.
 
 > **`service_role` 키는 절대 쓰지 마세요.** 그 키는 모든 잠금을 풀어 버립니다.
 > 화면에 들어가는 건 `anon` 키뿐이고, 이건 원래 공개되는 열쇠입니다
@@ -82,21 +91,15 @@ npm run db:check
 
 1. 이 폴더를 GitHub 저장소로 올립니다.
 2. <https://vercel.com> 가입 → **Add New… → Project** → 그 저장소 선택
-3. **Environment Variables** 에 3단계의 두 가지를 그대로 넣습니다.
-
-   | Name | Value |
-   |---|---|
-   | `SUPABASE_URL` | Project URL |
-   | `SUPABASE_ANON_KEY` | anon public 키 |
-
-4. **Deploy**. 1분쯤 뒤 `https://○○○.vercel.app` 주소가 나옵니다.
+3. **Deploy** (3단계를 했다면 환경 변수는 넣지 않아도 됩니다). 1분쯤 뒤 `https://○○○.vercel.app` 주소가 나옵니다.
 
 끝입니다. 이제 아래 주소를 씁니다.
 
 - 진행자: `https://○○○.vercel.app/host`
 - 학생: `https://○○○.vercel.app/play`
 
-> 환경 변수를 나중에 고쳤다면 Vercel에서 **Redeploy** 를 한 번 해 주세요.
+> 그 뒤로는 GitHub에 push 할 때마다 Vercel이 알아서 다시 배포합니다.
+> 환경 변수를 쓰는 쪽을 골랐다면, 변수를 고친 뒤 Vercel에서 **Redeploy** 를 한 번 눌러야 반영됩니다.
 
 ---
 
@@ -289,7 +292,7 @@ npm run seed
 
 | 증상 | 해결 |
 |---|---|
-| 화면에 "아직 준비가 안 됐어요" | Vercel 환경 변수(`SUPABASE_URL`, `SUPABASE_ANON_KEY`)를 안 넣었거나 넣고 Redeploy를 안 했습니다. |
+| 화면에 "아직 준비가 안 됐어요" | `supabase/public-config.json` 이 비어 있습니다(3단계). 고친 뒤 GitHub에 push 하면 Vercel이 다시 배포합니다. |
 | `npm run db:check` 에서 "함수를 찾을 수 없어요" | 4단계(`supabase/all.sql` 붙여넣기)를 안 했습니다. |
 | 방을 만들어도 학생이 못 들어옴 | 학생이 **다른 주소**에 들어갔을 수 있습니다. QR을 찍게 하세요. |
 | 캐릭터가 뚝뚝 끊겨 움직임 | 와이파이가 약합니다. 학생들이 공유기 가까이 모이면 나아집니다. |

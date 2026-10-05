@@ -6,4 +6,5 @@ screenshots/
 .env.local
 .env*.local
 
+
 public/config.js

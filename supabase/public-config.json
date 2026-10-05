@@ -1,0 +1,5 @@
+{
+  "_": "화면에 심는 Supabase 주소와 anon(공개) 열쇠입니다. service_role 키는 절대 넣지 마세요.",
+  "supabaseUrl": "https://ldtjjzsjtvgfnzgyfavz.supabase.co",
+  "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkdGpqenNqdHZnZm56Z3lmYXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExMjY0NzksImV4cCI6MjEwNjcwMjQ3OX0.xc6n_BHSzC2JDOFXXyX2utKrwI1upwtnr1mQJD6pU9Q"
+}
