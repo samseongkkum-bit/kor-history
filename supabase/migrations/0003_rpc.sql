@@ -543,6 +543,9 @@ begin
     return;
   end if;
   roles := 'anon, authenticated';
+  -- Supabase 는 PUBLIC 과 별도로 anon·authenticated 에게 직접 실행 권한을 준다. 그것도 회수한다.
+  execute format('revoke execute on all functions in schema public from %s', roles);
+  execute format('alter default privileges in schema public revoke execute on functions from %s', roles);
   -- 안에서만 쓰는 함수(hq_*)는 열지 않는다.
   foreach fn in array array[
     'host_create_room()', 'host_resume(text,uuid)', 'host_set_level(text,uuid,text)',
