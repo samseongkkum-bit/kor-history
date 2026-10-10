@@ -25,7 +25,9 @@ else
   psql -q -d "$DB" -v ON_ERROR_STOP=1 -c "do \$\$ begin
       if not exists (select 1 from pg_roles where rolname='anon') then create role anon nologin; end if;
       if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
-    end \$\$;"
+    end \$\$;
+    -- Supabase 처럼 새 함수마다 anon·authenticated 에게 직접 실행 권한이 붙게 한다
+    alter default privileges in schema public grant execute on functions to anon, authenticated;"
 fi
 
 for f in supabase/migrations/*.sql; do

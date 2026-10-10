@@ -87,6 +87,12 @@
         <div class="levels" id="levels"></div>
       </div>
 
+      <div class="card" id="prevcard" hidden>
+        <p class="cap muted">이전 방(<span id="prevCode"></span>) 학생 <b id="prevCount">0</b>명</p>
+        <button class="btn btn-primary" type="button" id="inviteAllBtn">모두 다시 부르기</button>
+        <ul class="players" id="prevPlayers"></ul>
+      </div>
+
       <div class="card">
         <p class="cap muted"><span id="plabel">들어온 학생</span> <b id="pcount">0</b>명 <span class="muted" id="pmax"></span></p>
         <ul class="players" id="players"></ul>
@@ -99,8 +105,11 @@
     <p class="cap muted" id="finalHead"></p>
     <h1 class="display">최종 순위</h1>
     <ol class="board-list final-list" id="finalList"></ol>
+    <p class="nextnote" id="nextNote" hidden></p>
     <div class="actions">
+      <button class="btn btn-primary" type="button" id="inviteGoBtn" hidden>이전 학생 모두 부르고 새 방으로</button>
       <button class="btn btn-primary" type="button" id="againBtn">새 문제로 한 판 더</button>
+      <button class="btn btn-secondary" type="button" id="newRoomBtn">새 방 만들기</button>
       <button class="btn btn-secondary" type="button" id="lobbyBtn">대기실로</button>
     </div>
   </section>

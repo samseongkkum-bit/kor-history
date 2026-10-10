@@ -87,3 +87,16 @@ end $$;
 
 reset role;
 delete from rooms where code = current_setting('test.code');
+
+/* ---------- Supabase 처럼 anon 에게 직접 권한이 붙어 있어도 내부 함수는 막힌다 ---------- */
+do $$
+begin
+  assert not exists (
+    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname like 'hq\_%'
+       and has_function_privilege('anon', p.oid, 'execute')
+  ), '안에서만 쓰는 hq_* 함수는 anon 이 부를 수 없다';
+  assert has_function_privilege('anon', 'host_new_room(text,uuid)', 'execute');
+  assert has_function_privilege('anon', 'play_accept_invite(uuid)', 'execute');
+  raise notice '내부 함수 권한 테스트 통과';
+end $$;
