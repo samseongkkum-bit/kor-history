@@ -69,7 +69,7 @@ returns text language sql immutable as $$
 $$;
 
 -- 한 판에 쓸 10문제를 뽑는다.
--- 30문제를 한 바퀴 다 돌 때까지 같은 문제가 다시 나오지 않고, 객관식은 보기 순서도 섞는다.
+-- 문제를 한 바퀴 다 돌 때까지 같은 문제가 다시 나오지 않고, 객관식은 보기 순서도 섞는다.
 -- (단일 파일 버전의 buildRound 와 같은 규칙)
 create or replace function hq_build_round(p_level text, p_used jsonb)
 returns jsonb language plpgsql as $$

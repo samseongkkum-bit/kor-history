@@ -169,6 +169,22 @@ begin
   raise notice '출제 순환 테스트 통과';
 end $$;
 
+/* ---------- 중등부: 문제가 많아도 한 바퀴 돌 때까지 겹치지 않는다 ---------- */
+do $$
+declare v_used jsonb := '{}'::jsonb; v_built jsonb; seen int[] := '{}'::int[]; v_total int; i int; n int;
+begin
+  select count(*) into v_total from questions where level = 'mid';
+  assert v_total >= 100, '중등부 문제는 100개 이상';
+  for i in 1..(v_total / 10) loop
+    v_built := hq_build_round('mid', v_used);
+    v_used := v_built -> 'used';
+    for n in 0..9 loop seen := seen || ((v_built -> 'round' -> n ->> 'src')::int); end loop;
+  end loop;
+  assert (select count(distinct x) from unnest(seen) x) = array_length(seen, 1),
+         '중등부 ' || array_length(seen, 1) || '문제가 한 번도 겹치지 않는다';
+  raise notice '중등부 출제 순환 테스트 통과 (문제 %개, %판)', v_total, v_total / 10;
+end $$;
+
 /* ---------- 객관식 보기 섞기 ---------- */
 do $$
 declare v_built jsonb; v_round jsonb; q jsonb; i int; src int; orig jsonb; checked int := 0; r int;
