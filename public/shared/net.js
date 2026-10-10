@@ -44,12 +44,15 @@ export const api = {
   hostNext:    (code, token)            => rpc("host_next",      { p_code: code, p_token: token }),
   hostEnd:     (code, token)            => rpc("host_end",       { p_code: code, p_token: token }),
   hostKick:    (code, token, player)    => rpc("host_kick",      { p_code: code, p_token: token, p_player: player }),
+  hostNewRoom: (code, token)            => rpc("host_new_room",  { p_code: code, p_token: token }),
+  hostInvite:  (code, token, player)    => rpc("host_invite",    { p_code: code, p_token: token, p_player: player || null }),
 
   playJoin:    (code, name, color, tok) => rpc("play_join", { p_code: code, p_name: name, p_color: color, p_token: tok || null }),
   playMove:    (token, x, y)            => rpc("play_move", { p_token: token, p_x: x, p_y: y }),
   playLock:    (token, x, y)            => rpc("play_lock", { p_token: token, p_x: x ?? null, p_y: y ?? null }),
   playHint:    (token)                  => rpc("play_hint", { p_token: token }),
-  playLeave:   (token)                  => rpc("play_leave", { p_token: token })
+  playLeave:   (token)                  => rpc("play_leave", { p_token: token }),
+  playAccept:  (token)                  => rpc("play_accept_invite", { p_token: token })
 };
 
 /* ---------------- 방 하나를 지켜보는 것 ---------------- */

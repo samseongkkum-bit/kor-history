@@ -336,8 +336,37 @@ function renderFinal(s){
   $("finalNote").hidden = qs >= 10;
   $("finalNote").textContent = qs < 10 ? `칭호는 10문제(10점 만점) 기준이에요. 이번에는 ${qs}문제만 풀었어요.` : "";
   $("againBtn").onclick = () => { LS.del("code"); location.href = "/play"; };
+  // 진행자가 새 방으로 다시 불렀으면 버튼 하나로 옮겨 간다
+  const invite = s.you?.invite;
+  $("inviteBox").hidden = !invite;
+  if (invite){
+    $("inviteCode").textContent = invite;
+    $("inviteBtn").onclick = acceptInvite;
+  }
   show("s-final");
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function acceptInvite(){
+  $("inviteBtn").disabled = true;
+  try {
+    const res = await api.playAccept(me.token);
+    me.code = res.code; me.id = res.playerId; me.token = res.playerToken;
+    LS.set("code", me.code); LS.set("token", me.token);
+    const you = res.snapshot?.you;
+    if (you){ me.name = you.name; me.color = you.color; me.score = you.score; LS.set("name", me.name); }
+    // 새 방에서는 처음부터 다시 센다
+    answers = []; shownQ = -2; shownPhase = ""; me.score = you?.score ?? 0;
+    history.replaceState(null, "", `/play?code=${me.code}`);
+    $("chip").textContent = `${me.code}번 방 · ${me.name}`;
+    yard?.setMe({ id: me.id, name: me.name, color: me.color });
+    startWatching();
+  } catch (e) {
+    message("새 방에 들어가지 못했어요", e instanceof NetError ? e.message : "잠시 뒤 다시 해 보세요.",
+            "다시 해 보기", () => location.reload());
+  } finally {
+    $("inviteBtn").disabled = false;
+  }
 }
 
 // 구역 좌표는 화면에서 계산한다(판정은 서버가 같은 규칙으로 따로 한다).

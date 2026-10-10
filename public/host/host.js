@@ -15,7 +15,8 @@ const LS = {
 
 let room = { code: LS.get("code"), hostToken: LS.get("token") };
 let yard = null, watch = null, relay = null, timerRaf = 0;
-let shownQ = -2, shownPhase = "", lastPlayers = "", curZones = [];
+let shownQ = -2, shownPhase = "", lastPlayers = "", lastPrev = "", curZones = [];
+let nextSnap = null;          // 강제 종료로 만들어 둔 새 방(최종 순위를 보여 주는 동안 기다린다)
 
 const show = which => ["s-start","s-game","s-final","s-msg"].forEach(id => $(id).hidden = id !== which);
 const message = (t, b) => { $("msgTitle").textContent = t; $("msgBody").textContent = b; show("s-msg"); };
@@ -110,9 +111,39 @@ $("startBtn").onclick = guard(() => api.hostStart(room.code, room.hostToken));
 $("nextBtn").onclick  = guard(() => api.hostNext(room.code, room.hostToken));
 $("againBtn").onclick = guard(() => api.hostStart(room.code, room.hostToken));
 $("endBtn").onclick = async () => {
-  if (!confirm("게임을 지금 끝내고 최종 순위를 보여 줄까요?")) return;
-  try { render(await api.hostEnd(room.code, room.hostToken)); } catch (e) { console.warn(e.message); }
+  if (!confirm("게임을 지금 끝내고 최종 순위를 보여 줄까요?\n새 방도 바로 만들어 둘게요.")) return;
+  await makeNewRoom();
 };
+
+/* ---------------- 새 방 ---------------- */
+// 강제 종료하면 옛 방은 최종 순위로 끝내고 새 방을 연다. 진행자 화면은 옛 방의 최종 순위를 보여 주다가
+// 버튼을 누르면 새 방 대기실로 간다. 이 화면을 새로고침해도 새 방으로 이어진다.
+async function makeNewRoom(){
+  let res;
+  try { res = await api.hostNewRoom(room.code, room.hostToken); }
+  catch (e) { return message("새 방을 만들지 못했어요", e instanceof NetError ? e.message : "잠시 뒤 다시 해 주세요."); }
+  watch?.stop(); relay?.stop(); watch = null; relay = null;
+  room = { code: res.code, hostToken: res.hostToken };
+  LS.set("code", room.code); LS.set("token", room.hostToken);
+  nextSnap = res.snapshot;
+  render(res.finished);
+}
+
+async function enterNextRoom(inviteAll){
+  let snap = nextSnap;
+  nextSnap = null;
+  if (inviteAll){
+    try { snap = await api.hostInvite(room.code, room.hostToken); } catch (e) { console.warn(e.message); }
+  }
+  shownQ = -2; shownPhase = ""; lastPlayers = ""; lastPrev = "";
+  $("codecard").dataset.open = "";
+  enterRoom(snap);
+}
+
+$("newRoomBtn").onclick  = () => nextSnap ? enterNextRoom(false) : makeNewRoom();
+$("inviteGoBtn").onclick = () => enterNextRoom(true);
+$("inviteAllBtn").onclick = guard(() => api.hostInvite(room.code, room.hostToken));
+
 $("lobbyBtn").onclick = () => { show("s-game"); $("qcard").hidden = true; $("revealcard").hidden = true; yard?.clearZones(); };
 $("codecard").onclick = () => {
   const c = $("codecard");
@@ -150,6 +181,7 @@ function render(s){
 
   yard?.setMeta(s.players || []);
   renderPlayers(s.players || [], s.phase);
+  renderPrev(s);
 
   if (s.phase === "lobby"){
     shownQ = -2; shownPhase = "lobby";
@@ -210,6 +242,13 @@ function renderReveal(s){
 function renderFinal(s){
   stopTimer();
   shownPhase = "final"; shownQ = -2;
+  // 새 방을 만들어 두었으면 그쪽으로 가는 버튼만 보여 준다
+  $("nextNote").hidden = !nextSnap;
+  if (nextSnap) $("nextNote").innerHTML = `새 방 <b>${esc(nextSnap.code)}</b> 을 만들어 두었어요. 학생들을 다시 불러 한 판 더 해요!`;
+  $("inviteGoBtn").hidden = !nextSnap || !(s.count > 0);
+  $("againBtn").hidden = !!nextSnap;
+  $("lobbyBtn").hidden = !!nextSnap;
+  $("newRoomBtn").textContent = nextSnap ? "새 방 대기실로" : "새 방 만들기";
   const list = s.ranking || [];
   $("finalHead").textContent = `${list.length}명 참여 · ${s.questions ?? 0}문제 · 오늘 참여 인원 합계 ${s.todayTotal ?? 0}명`;
   $("finalList").innerHTML = list.map(p =>
@@ -244,6 +283,39 @@ function renderPlayers(players, phase){
       try { render(await api.hostKick(room.code, room.hostToken, p.id)); } catch (e) { console.warn(e.message); }
     };
     li.appendChild(k);
+    ul.appendChild(li);
+  }
+}
+
+// 이전 방 학생 명단. 대기실에서 한 명씩 또는 모두 다시 부를 수 있다.
+function renderPrev(s){
+  const list = s.prev || [];
+  const visible = s.phase === "lobby" && !!s.prevCode && list.length > 0;
+  $("prevcard").hidden = !visible;
+  if (!visible) return;
+  const key = JSON.stringify(list);
+  if (key === lastPrev) return;
+  lastPrev = key;
+  $("prevCode").textContent = s.prevCode;
+  $("prevCount").textContent = list.length;
+  const waiting = list.filter(p => !p.moved);
+  $("inviteAllBtn").disabled = !waiting.some(p => !p.invited);
+  $("inviteAllBtn").textContent = waiting.length && waiting.every(p => p.invited) ? "모두 불렀어요" : "모두 다시 부르기";
+  const ul = $("prevPlayers");
+  ul.innerHTML = "";
+  for (const p of list){
+    const li = document.createElement("li");
+    const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = p.name; li.appendChild(nm);
+    if (p.moved){
+      const t = document.createElement("span"); t.className = "inv"; t.textContent = "들어왔어요"; li.appendChild(t);
+    } else {
+      const b = document.createElement("button");
+      b.className = "kick call"; b.type = "button";
+      b.textContent = p.invited ? "다시 부르기" : "부르기";
+      b.onclick = guard(() => api.hostInvite(room.code, room.hostToken, p.id));
+      if (p.invited){ const t = document.createElement("span"); t.className = "off"; t.textContent = "부르는 중"; li.appendChild(t); }
+      li.appendChild(b);
+    }
     ul.appendChild(li);
   }
 }
