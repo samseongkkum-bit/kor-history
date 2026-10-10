@@ -296,7 +296,7 @@ begin
     on conflict (room_code, q_index, player_id) do nothing;
 
     if v_correct then
-      update players set score = score + 1, bonus = bonus + v_bonus where id = p.id;
+      update players set score = score + hq_points(), bonus = bonus + v_bonus where id = p.id;
     end if;
   end loop;
 
@@ -312,7 +312,7 @@ create or replace function play_join(p_code text, p_name text, p_color text, p_t
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_room rooms%rowtype;
-  v_id uuid; v_new_token uuid; v_base text; v_name text; v_n int; v_count int;
+  v_id uuid; v_new_token uuid; v_base text; v_name text; v_n int; v_count int; v_color text;
 begin
   select * into v_room from rooms where code = p_code for update;
   if not found then raise exception '그런 입장 코드가 없어요. 진행자 화면의 숫자를 다시 확인해 주세요.'; end if;
@@ -323,9 +323,7 @@ begin
       join players pl on pl.id = ps.player_id
      where ps.token = p_token and pl.room_code = p_code;
     if v_id is not null then
-      update players set connected = true, last_seen = now(),
-             color = coalesce(nullif(p_color, ''), color)
-       where id = v_id;
+      update players set connected = true, last_seen = now() where id = v_id;
       perform hq_touch(p_code);
       return jsonb_build_object('playerId', v_id, 'playerToken', p_token, 'rejoined', true,
                                 'snapshot', get_snapshot(p_code, p_token));
@@ -346,8 +344,20 @@ begin
     if v_n > 99 then v_name := v_base || floor(random() * 1000)::int::text; exit; end if;
   end loop;
 
+  -- 저고리 색은 학생이 고르지 않는다. 이 방에서 아직 아무도 안 입은 색 중 하나를 무작위로 준다.
+  -- (p_color 는 새 방으로 옮겨 갈 때 입던 색을 이어 입으려는 것. 그 색이 비어 있을 때만 쓴다.)
+  -- 방 줄을 for update 로 잡고 있으므로 동시에 들어와도 색이 겹치지 않는다.
+  if p_color = any(hq_colors())
+     and not exists (select 1 from players where room_code = p_code and color = p_color) then
+    v_color := p_color;
+  else
+    select c into v_color from unnest(hq_colors()) c
+     where not exists (select 1 from players where room_code = p_code and color = c)
+     order by random() limit 1;
+  end if;
+
   insert into players(room_code, name, color, pending)
-  values (p_code, v_name, coalesce(nullif(p_color, ''), 'red'), v_room.phase = 'question')
+  values (p_code, v_name, coalesce(v_color, 'red'), v_room.phase = 'question')
   returning id into v_id;
   insert into player_secrets(player_id) values (v_id) returning token into v_new_token;
 
@@ -356,7 +366,7 @@ begin
                             'snapshot', get_snapshot(p_code, v_new_token));
 end $$;
 
--- 초대받은 학생이 새 방으로 옮겨 간다. 이름과 색은 그대로, 점수는 새로 시작한다.
+-- 초대받은 학생이 새 방으로 옮겨 간다. 이름과 색은 그대로(색이 이미 쓰였으면 새 색), 점수는 새로 시작한다.
 create or replace function play_accept_invite(p_token uuid)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare p players%rowtype; v_res jsonb;

@@ -1,6 +1,6 @@
 // 학생 화면. 내 캐릭터만 내 기기가 움직이고, 채점과 시간은 Supabase(Postgres 함수)가 정한다.
-import { COLORS, RANKS, NUMS, esc, rankOf } from "/shared/consts.js";
-import { drawPerson, cv } from "/shared/draw.js";
+import { RANKS, NUMS, POINTS, esc, rankOf, colorInfo } from "/shared/consts.js";
+import { drawPerson, cv, jacket } from "/shared/draw.js";
 import { createYard } from "/shared/yard.js";
 import { zonesFor } from "/shared/map.js";
 import { api, watchRoom, positionRelay, configMissing, NetError } from "/shared/net.js";
@@ -14,7 +14,7 @@ const LS = {
 
 const me = {
   name: LS.get("name", ""),
-  color: LS.get("color", "red"),
+  color: "",                     // 서버가 들어올 때 정해 준다
   token: LS.get("token", ""),
   code: (new URLSearchParams(location.search).get("code") || LS.get("code", "")).replace(/\D/g, "").slice(0, 4),
   id: null, score: 0
@@ -37,24 +37,17 @@ function message(title, body, btn = "처음으로", onBtn){
 }
 const showErr = m => { $("joinErr").textContent = m; $("joinErr").hidden = false; };
 
-/* ---------------- 입장 화면 ---------------- */
+/* ---------------- 내 캐릭터 미리보기(대기 화면) ---------------- */
 function drawPreview(){
-  const pv = $("pv"); if (!pv) return;
+  const pv = $("pv"); if (!pv || !me.color) return;
   const ctx = pv.getContext("2d");
   ctx.setTransform(4,0,0,4,0,0);
   ctx.fillStyle = cv("--ground"); ctx.fillRect(0,0,110,110);
-  drawPerson(ctx, 55, 62, { upper: cv((COLORS.find(c=>c.id===me.color)||COLORS[0]).css), lower: cv("--meok-muted"), ribbon: cv("--red") });
+  drawPerson(ctx, 55, 62, { upper: jacket(me.color), lower: cv("--meok-muted"), ribbon: cv("--red") });
 }
 
+/* ---------------- 입장 화면 ---------------- */
 function buildJoin(){
-  $("colors").innerHTML = COLORS.map(c =>
-    `<button class="swatch" type="button" data-color="${c.id}" aria-label="${c.label}" aria-pressed="${me.color===c.id}" style="background:var(${c.css})"></button>`
-  ).join("");
-  $("colors").querySelectorAll("[data-color]").forEach(b => b.onclick = () => {
-    me.color = b.dataset.color; LS.set("color", me.color);
-    $("colors").querySelectorAll("[data-color]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
-    drawPreview();
-  });
   $("code").value = me.code || "";
   $("pname").value = me.name || "";
   $("code").oninput = e => { e.target.value = e.target.value.replace(/\D/g, "").slice(0,4); };
@@ -68,7 +61,6 @@ function buildJoin(){
     $("joinErr").hidden = true;
     doJoin();
   };
-  drawPreview();
 }
 
 /* ---------------- 입장 ---------------- */
@@ -76,7 +68,7 @@ async function doJoin(){
   $("joinBtn").disabled = true;
   $("chip").textContent = "들어가는 중…";
   try {
-    const res = await api.playJoin(me.code, me.name, me.color, me.token || null);
+    const res = await api.playJoin(me.code, me.name, null, me.token || null);
     me.id = res.playerId; me.token = res.playerToken;
     LS.set("token", me.token);
     const you = res.snapshot?.you;
@@ -116,7 +108,7 @@ function startWatching(){
 function ensureYard(){
   if (yard) return;
   yard = createYard($("yard"), { name: me.name, color: me.color });
-  yard.bindPad($("pad"));
+  yard.bindJoystick($("joy"));
   yard.setMe({ id: me.id, name: me.name, color: me.color });
 
   yard.on("move", p => {
@@ -189,7 +181,7 @@ async function openHint(){
 /* ---------------- 지금 상황 그리기 ---------------- */
 function render(s){
   total = s.total || total;
-  if (s.you){ me.score = s.you.score; me.name = s.you.name || me.name; me.id = s.you.id || me.id; }
+  if (s.you){ me.score = s.you.score; me.name = s.you.name || me.name; me.id = s.you.id || me.id; me.color = s.you.color || me.color; }
   yard?.setMe({ id: me.id, name: me.name, color: me.color });
   yard?.setMeta((s.players || []).filter(p => p.id !== me.id));
 
@@ -203,7 +195,9 @@ function renderWait(s){
   shownQ = -2; shownPhase = "lobby";
   $("waitWho").innerHTML = `<b>${esc(me.name)}</b> 님, 반가워요!`;
   $("waitCount").textContent = `지금 마당에 ${s.count ?? 1}명 있어요`;
+  $("waitColor").innerHTML = me.color ? `내 저고리는 <b>${esc(colorInfo(me.color).label)}</b>색이에요` : "";
   show("s-wait");
+  drawPreview();
 }
 
 function renderQuestion(s){
@@ -328,13 +322,13 @@ function renderFinal(s){
   const r = rankOf(score);
   const qs = s.questions ?? total;
   $("finalWho").innerHTML = `${esc(me.name)} 님, ${qs}문제 중`;
-  $("finalScore").innerHTML = `${score}<small> / ${qs}</small>`;
+  $("finalScore").innerHTML = `${score}<small> / ${qs * POINTS}</small>`;
   $("finalTitle").textContent = r.title;
   $("finalSay").textContent = r.say;
   $("ladder").innerHTML = RANKS.map(x => `<span class="${x.title === r.title ? "on" : ""}">${x.title}</span>`).join("");
   $("finalPlace").textContent = mine ? `${s.ranking.length}명 중 ${mine.place}등이에요` : "";
   $("finalNote").hidden = qs >= 10;
-  $("finalNote").textContent = qs < 10 ? `칭호는 10문제(10점 만점) 기준이에요. 이번에는 ${qs}문제만 풀었어요.` : "";
+  $("finalNote").textContent = qs < 10 ? `칭호는 10문제(${10 * POINTS}점 만점) 기준이에요. 이번에는 ${qs}문제만 풀었어요.` : "";
   $("againBtn").onclick = () => { LS.del("code"); location.href = "/play"; };
   // 진행자가 새 방으로 다시 불렀으면 버튼 하나로 옮겨 간다
   const invite = s.you?.invite;

@@ -30,19 +30,31 @@ returns text language sql immutable as $$
   end
 $$;
 
--- 문제당 제한 시간: O/X 12초, 객관식 20초
+-- 문제당 제한 시간: O/X 22초, 객관식 30초
 create or replace function hq_seconds(p_type text) returns int
-language sql immutable as $$ select case when p_type = 'mc' then 20 else 12 end $$;
+language sql immutable as $$ select case when p_type = 'mc' then 30 else 22 end $$;
 
--- 칭호(10점 만점)
+-- 한 문제 맞히면 받는 점수(10문제 100점 만점)
+create or replace function hq_points() returns int
+language sql immutable as $$ select 10 $$;
+
+-- 저고리 색 목록(public/shared/consts.js 의 COLORS 와 같은 순서·같은 개수). 한 방 최대 인원(30명)만큼 있다.
+create or replace function hq_colors() returns text[]
+language sql immutable as $$ select array[
+  'red','cheong','hwang','pink','purple','sky','navy','green','lime','orange',
+  'brown','plum','mint','lav','coral','olive','teal','lemon','rose','blue',
+  'meok','gray','peach','wine','forest','cyan','violet','tan','magenta','steel'
+] $$;
+
+-- 칭호(100점 만점)
 create or replace function hq_title(p_score int) returns text
 language sql immutable as $$
   select case
-    when p_score >= 10 then '왕'
-    when p_score >= 9  then '조선의 학자'
-    when p_score >= 7  then '귀족'
-    when p_score >= 5  then '평민'
-    when p_score >= 3  then '양민'
+    when p_score >= 100 then '왕'
+    when p_score >= 90  then '조선의 학자'
+    when p_score >= 70  then '귀족'
+    when p_score >= 50  then '평민'
+    when p_score >= 30  then '양민'
     else '천민'
   end
 $$;
@@ -50,11 +62,11 @@ $$;
 create or replace function hq_title_say(p_score int) returns text
 language sql immutable as $$
   select case
-    when p_score >= 10 then '모두 맞혔어요! 오늘 부스의 임금님이에요.'
-    when p_score >= 9  then '거의 다 맞혔어요! 집현전 학자도 놀랄 실력이에요.'
-    when p_score >= 7  then '대단해요! 역사 이야기를 많이 알고 있네요.'
-    when p_score >= 5  then '절반 넘게 맞혔어요! 우리 역사와 꽤 친해졌어요.'
-    when p_score >= 3  then '조금씩 알아가고 있어요. 해설을 다시 읽어 보면 더 잘할 수 있어요.'
+    when p_score >= 100 then '모두 맞혔어요! 오늘 부스의 임금님이에요.'
+    when p_score >= 90  then '거의 다 맞혔어요! 집현전 학자도 놀랄 실력이에요.'
+    when p_score >= 70  then '대단해요! 역사 이야기를 많이 알고 있네요.'
+    when p_score >= 50  then '절반 넘게 맞혔어요! 우리 역사와 꽤 친해졌어요.'
+    when p_score >= 30  then '조금씩 알아가고 있어요. 해설을 다시 읽어 보면 더 잘할 수 있어요.'
     else '이제 막 역사 여행을 시작했어요. 다시 풀면 금방 올라갈 수 있어요!'
   end
 $$;

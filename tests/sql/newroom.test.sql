@@ -49,7 +49,8 @@ begin
   r := play_accept_invite((b ->> 'playerToken')::uuid);
   assert r ->> 'code' = new_code;
   assert (select room_code from players where id = (r->>'playerId')::uuid) = new_code;
-  assert (select name || color from players where id = (r->>'playerId')::uuid) = '지아red', '이름과 색을 그대로';
+  assert (select name || color from players where id = (r->>'playerId')::uuid)
+       = (select name || color from players where id = (b->>'playerId')::uuid), '이름과 색을 그대로';
   assert (select score from players where id = (r->>'playerId')::uuid) = 0, '점수는 새로 시작';
   assert (select moved from players where id = (b->>'playerId')::uuid);
   s := get_snapshot(old_code, (b ->> 'playerToken')::uuid);
