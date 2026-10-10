@@ -12,7 +12,33 @@
 
 ---
 
-## 처음 설정 (한 번만)
+## 지금 설정된 상태
+
+아래 "처음 설정"은 **이미 끝나 있습니다.** 부스에서는 이 주소를 그대로 쓰면 됩니다.
+
+| 화면 | 주소 |
+|---|---|
+| 진행자 | <https://kor-history.vercel.app/host> |
+| 학생 | <https://kor-history.vercel.app/play> |
+| 혼자 하기 | <https://kor-history.vercel.app/solo> |
+
+| 항목 | 상태 |
+|---|---|
+| Vercel | `kor-history` 프로젝트. `main` 에 push 하면 자동 배포 |
+| Supabase | `ldtjjzsjtvgfnzgyfavz` 프로젝트 (지역: **ap-south-1, 뭄바이**) — 표 8개·문제 60개(초등부 30, 중등부 30) 올라가 있음 |
+| 화면에 심는 키 | `supabase/public-config.json` (anon 키만) |
+
+> **Vercel에 같은 저장소가 `kor-history-x4gs` 로 한 번 더 연결되어 있습니다.**
+> 주소는 <https://kor-history-x4gs.vercel.app> 이고 내용은 같습니다. 헷갈리지 않게 위의 `kor-history` 주소만 쓰세요.
+> 필요 없으면 Vercel 대시보드에서 `kor-history-x4gs` 프로젝트를 지워도 됩니다.
+
+> Supabase가 서울이 아닌 **뭄바이**에 있어 캐릭터 움직임이 조금 늦게 보일 수 있습니다.
+> 부스 와이파이에서 시험해 보고 끊김이 심하면, 서울(Northeast Asia)에 새 프로젝트를 만들어
+> 아래 3·4단계를 다시 하면 됩니다(지역은 만든 뒤에 바꿀 수 없습니다).
+
+---
+
+## 처음 설정 (새로 만들 때만, 한 번만)
 
 인터넷에 올려서 쓰는 방식이라, **Supabase**(자료를 보관하고 실시간으로 나르는 곳)와
 **Vercel**(화면을 보여 주는 곳) 두 군데에 가입해야 합니다. 둘 다 무료 플랜으로 충분합니다.
