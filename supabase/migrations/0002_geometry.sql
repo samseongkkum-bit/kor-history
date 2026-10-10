@@ -30,9 +30,28 @@ returns text language sql immutable as $$
   end
 $$;
 
--- 문제당 제한 시간: O/X 22초, 객관식 30초
+-- 문제당 제한 시간: O/X 22초, 객관식 30초, 주관식 40초(폰으로 글자를 쳐야 하니까)
 create or replace function hq_seconds(p_type text) returns int
-language sql immutable as $$ select case when p_type = 'mc' then 30 else 22 end $$;
+language sql immutable as $$ select case when p_type = 'mc' then 30 when p_type = 'sa' then 40 else 22 end $$;
+
+-- 주관식 답 비교용으로 다듬는다: 띄어쓰기·가운뎃점·괄호·따옴표 같은 것은 빼고, '1592년'과 '1592'는 같게 본다.
+-- public/solo/index.html 의 normAnswer 와 같은 규칙.
+create or replace function hq_norm(p text) returns text
+language sql immutable as $$
+  select regexp_replace(
+           regexp_replace(lower(coalesce(p, '')), '[][[:space:]·ㆍ.,''"‘’“”()（）『』「」<>《》〈〉!?~-]', '', 'g'),
+           '([0-9])년$', '\1')
+$$;
+
+-- 주관식 채점: 정답이나 함께 인정하는 이름 중 하나와 같으면 맞다.
+create or replace function hq_sa_correct(p_typed text, p_answer text, p_accept jsonb) returns boolean
+language sql immutable as $$
+  select hq_norm(p_typed) <> '' and hq_norm(p_typed) in (
+    select hq_norm(p_answer)
+    union all
+    select hq_norm(x) from jsonb_array_elements_text(coalesce(p_accept, '[]'::jsonb)) x
+  )
+$$;
 
 -- 한 문제 맞히면 받는 점수(10문제 100점 만점)
 create or replace function hq_points() returns int
@@ -76,12 +95,14 @@ create or replace function hq_answer_label(p_type text, p_answer text, p_choices
 returns text language sql immutable as $$
   select case
     when p_type = 'ox' then case when p_answer = 'O' then '○ (맞아요)' else '× (아니에요)' end
+    when p_type = 'sa' then p_answer
     else (array['①','②','③','④'])[p_answer::int + 1] || ' ' || (p_choices ->> p_answer::int)
   end
 $$;
 
 -- 한 판에 쓸 10문제를 뽑는다.
 -- 문제를 한 바퀴 다 돌 때까지 같은 문제가 다시 나오지 않고, 객관식은 보기 순서도 섞는다.
+-- 주관식은 함께 인정하는 이름(accept)도 같이 담아 둔다(room_secrets 에만 들어가므로 손님은 못 본다).
 -- (단일 파일 버전의 buildRound 와 같은 규칙)
 create or replace function hq_build_round(p_level text, p_used jsonb)
 returns jsonb language plpgsql as $$
@@ -130,7 +151,7 @@ begin
     end if;
     v_round := v_round || jsonb_build_object(
       'src', i, 'type', r.type, 'q', r.q, 'choices', v_choices,
-      'answer', v_answer, 'hint', r.hint, 'explain', r.explain);
+      'answer', v_answer, 'accept', r.accept, 'hint', r.hint, 'explain', r.explain);
   end loop;
 
   return jsonb_build_object(
