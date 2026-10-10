@@ -210,19 +210,31 @@ returns text language sql immutable as $$
   end
 $$;
 
--- 문제당 제한 시간: O/X 12초, 객관식 20초
+-- 문제당 제한 시간: O/X 22초, 객관식 30초
 create or replace function hq_seconds(p_type text) returns int
-language sql immutable as $$ select case when p_type = 'mc' then 20 else 12 end $$;
+language sql immutable as $$ select case when p_type = 'mc' then 30 else 22 end $$;
 
--- 칭호(10점 만점)
+-- 한 문제 맞히면 받는 점수(10문제 100점 만점)
+create or replace function hq_points() returns int
+language sql immutable as $$ select 10 $$;
+
+-- 저고리 색 목록(public/shared/consts.js 의 COLORS 와 같은 순서·같은 개수). 한 방 최대 인원(30명)만큼 있다.
+create or replace function hq_colors() returns text[]
+language sql immutable as $$ select array[
+  'red','cheong','hwang','pink','purple','sky','navy','green','lime','orange',
+  'brown','plum','mint','lav','coral','olive','teal','lemon','rose','blue',
+  'meok','gray','peach','wine','forest','cyan','violet','tan','magenta','steel'
+] $$;
+
+-- 칭호(100점 만점)
 create or replace function hq_title(p_score int) returns text
 language sql immutable as $$
   select case
-    when p_score >= 10 then '왕'
-    when p_score >= 9  then '조선의 학자'
-    when p_score >= 7  then '귀족'
-    when p_score >= 5  then '평민'
-    when p_score >= 3  then '양민'
+    when p_score >= 100 then '왕'
+    when p_score >= 90  then '조선의 학자'
+    when p_score >= 70  then '귀족'
+    when p_score >= 50  then '평민'
+    when p_score >= 30  then '양민'
     else '천민'
   end
 $$;
@@ -230,11 +242,11 @@ $$;
 create or replace function hq_title_say(p_score int) returns text
 language sql immutable as $$
   select case
-    when p_score >= 10 then '모두 맞혔어요! 오늘 부스의 임금님이에요.'
-    when p_score >= 9  then '거의 다 맞혔어요! 집현전 학자도 놀랄 실력이에요.'
-    when p_score >= 7  then '대단해요! 역사 이야기를 많이 알고 있네요.'
-    when p_score >= 5  then '절반 넘게 맞혔어요! 우리 역사와 꽤 친해졌어요.'
-    when p_score >= 3  then '조금씩 알아가고 있어요. 해설을 다시 읽어 보면 더 잘할 수 있어요.'
+    when p_score >= 100 then '모두 맞혔어요! 오늘 부스의 임금님이에요.'
+    when p_score >= 90  then '거의 다 맞혔어요! 집현전 학자도 놀랄 실력이에요.'
+    when p_score >= 70  then '대단해요! 역사 이야기를 많이 알고 있네요.'
+    when p_score >= 50  then '절반 넘게 맞혔어요! 우리 역사와 꽤 친해졌어요.'
+    when p_score >= 30  then '조금씩 알아가고 있어요. 해설을 다시 읽어 보면 더 잘할 수 있어요.'
     else '이제 막 역사 여행을 시작했어요. 다시 풀면 금방 올라갈 수 있어요!'
   end
 $$;
@@ -610,7 +622,7 @@ begin
     on conflict (room_code, q_index, player_id) do nothing;
 
     if v_correct then
-      update players set score = score + 1, bonus = bonus + v_bonus where id = p.id;
+      update players set score = score + hq_points(), bonus = bonus + v_bonus where id = p.id;
     end if;
   end loop;
 
@@ -626,7 +638,7 @@ create or replace function play_join(p_code text, p_name text, p_color text, p_t
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_room rooms%rowtype;
-  v_id uuid; v_new_token uuid; v_base text; v_name text; v_n int; v_count int;
+  v_id uuid; v_new_token uuid; v_base text; v_name text; v_n int; v_count int; v_color text;
 begin
   select * into v_room from rooms where code = p_code for update;
   if not found then raise exception '그런 입장 코드가 없어요. 진행자 화면의 숫자를 다시 확인해 주세요.'; end if;
@@ -637,9 +649,7 @@ begin
       join players pl on pl.id = ps.player_id
      where ps.token = p_token and pl.room_code = p_code;
     if v_id is not null then
-      update players set connected = true, last_seen = now(),
-             color = coalesce(nullif(p_color, ''), color)
-       where id = v_id;
+      update players set connected = true, last_seen = now() where id = v_id;
       perform hq_touch(p_code);
       return jsonb_build_object('playerId', v_id, 'playerToken', p_token, 'rejoined', true,
                                 'snapshot', get_snapshot(p_code, p_token));
@@ -660,8 +670,20 @@ begin
     if v_n > 99 then v_name := v_base || floor(random() * 1000)::int::text; exit; end if;
   end loop;
 
+  -- 저고리 색은 학생이 고르지 않는다. 이 방에서 아직 아무도 안 입은 색 중 하나를 무작위로 준다.
+  -- (p_color 는 새 방으로 옮겨 갈 때 입던 색을 이어 입으려는 것. 그 색이 비어 있을 때만 쓴다.)
+  -- 방 줄을 for update 로 잡고 있으므로 동시에 들어와도 색이 겹치지 않는다.
+  if p_color = any(hq_colors())
+     and not exists (select 1 from players where room_code = p_code and color = p_color) then
+    v_color := p_color;
+  else
+    select c into v_color from unnest(hq_colors()) c
+     where not exists (select 1 from players where room_code = p_code and color = c)
+     order by random() limit 1;
+  end if;
+
   insert into players(room_code, name, color, pending)
-  values (p_code, v_name, coalesce(nullif(p_color, ''), 'red'), v_room.phase = 'question')
+  values (p_code, v_name, coalesce(v_color, 'red'), v_room.phase = 'question')
   returning id into v_id;
   insert into player_secrets(player_id) values (v_id) returning token into v_new_token;
 
@@ -670,7 +692,7 @@ begin
                             'snapshot', get_snapshot(p_code, v_new_token));
 end $$;
 
--- 초대받은 학생이 새 방으로 옮겨 간다. 이름과 색은 그대로, 점수는 새로 시작한다.
+-- 초대받은 학생이 새 방으로 옮겨 간다. 이름과 색은 그대로(색이 이미 쓰였으면 새 색), 점수는 새로 시작한다.
 create or replace function play_accept_invite(p_token uuid)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare p players%rowtype; v_res jsonb;

@@ -1,12 +1,11 @@
 // 한옥 마당 캔버스. 진행자 화면(관전)과 학생 화면(내 캐릭터)이 같이 쓴다.
 // 내 캐릭터는 내 기기에서 바로 움직이고, 다른 학생은 서버가 보내 준 위치를 보간해서 부드럽게 그린다.
 import { W, H, START, SCROLL, clampYard, zoneAt } from "./map.js";
-import { COLORS, SPEED } from "./consts.js";
-import { drawYard, drawZones, drawTeacher, drawScroll, drawTarget, drawPlayer, setTextScale, cv } from "./draw.js";
+import { SPEED } from "./consts.js";
+import { drawYard, drawZones, drawTeacher, drawScroll, drawTarget, drawPlayer, setTextScale } from "./draw.js";
 
 const SEND_HZ = 12;                 // 내 위치를 서버로 보내는 횟수(초당)
 const LERP_MS = 110;                // 서버가 위치를 뿌리는 주기(100ms)보다 살짝 길게 잡아 끊기지 않게
-const colorCss = id => (COLORS.find(c => c.id === id) || COLORS[0]).css;
 
 export function createYard(canvas, opts = {}){
   const ctx = canvas.getContext("2d");
@@ -18,6 +17,8 @@ export function createYard(canvas, opts = {}){
     counts: null,
     frozen: spectator,            // 입력을 받지 않는 상태
     hintOpen: false,
+    hideOthers: false,            // 문제를 푸는 동안은 개인전: 다른 학생이 안 보인다(정답 공개 때 보인다)
+    joy: { x: 0, y: 0 },          // 조이스틱 방향(길이 0~1)
     me: { ...START, moving: false },
     target: null,
     others: new Map(),            // id -> {px,py,nx,ny,t0,moving}
@@ -56,13 +57,35 @@ export function createYard(canvas, opts = {}){
   }
   function onKeyUp(e){ keys.delete(keyName(e)); }
 
-  // 화면 방향 버튼(태블릿용)
-  function bindPad(container){
-    container?.querySelectorAll("[data-dir]").forEach(b => {
-      const on = e => { e.preventDefault(); if (S.frozen) return; keys.add("pad-" + b.dataset.dir); S.target = null; };
-      const off = () => keys.delete("pad-" + b.dataset.dir);
-      b.onpointerdown = on; b.onpointerup = off; b.onpointerleave = off; b.onpointercancel = off;
+  // 화면 조이스틱(폰·태블릿용). 가운데에서 끌어낸 만큼 그 방향으로, 멀리 끌수록 빠르게 걷는다.
+  function bindJoystick(base){
+    if (!base) return;
+    const knob = base.querySelector(".knob");
+    let pid = null;
+    const set = (x, y) => {
+      S.joy = { x, y };
+      if (knob) knob.style.transform = `translate(${x * 50}%, ${y * 50}%)`;
+    };
+    const release = () => { pid = null; set(0, 0); base.classList.remove("on"); };
+    const update = e => {
+      const r = base.getBoundingClientRect(), rad = r.width / 2;
+      let x = (e.clientX - r.left - rad) / rad, y = (e.clientY - r.top - rad) / rad;
+      const l = Math.hypot(x, y);
+      if (l > 1){ x /= l; y /= l; }
+      if (l < .15){ x = 0; y = 0; }           // 가운데 근처는 멈춤
+      set(x, y);
+    };
+    base.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      if (S.frozen) return;
+      pid = e.pointerId; base.setPointerCapture?.(e.pointerId);
+      base.classList.add("on"); S.target = null; update(e);
     });
+    base.addEventListener("pointermove", e => { if (e.pointerId === pid) update(e); });
+    base.addEventListener("pointerup", e => { if (e.pointerId === pid) release(); });
+    base.addEventListener("pointercancel", e => { if (e.pointerId === pid) release(); });
+    base.addEventListener("lostpointercapture", e => { if (e.pointerId === pid) release(); });
+    S.releaseJoy = release;
   }
 
   /* ---------------- 서버에서 온 위치 ---------------- */
@@ -91,15 +114,16 @@ export function createYard(canvas, opts = {}){
 
     if (!spectator && !S.frozen){
       let dx = 0, dy = 0;
-      if (keys.has("ArrowLeft") || keys.has("a") || keys.has("pad-left")) dx -= 1;
-      if (keys.has("ArrowRight") || keys.has("d") || keys.has("pad-right")) dx += 1;
-      if (keys.has("ArrowUp") || keys.has("w") || keys.has("pad-up")) dy -= 1;
-      if (keys.has("ArrowDown") || keys.has("s") || keys.has("pad-down")) dy += 1;
+      if (keys.has("ArrowLeft") || keys.has("a")) dx -= 1;
+      if (keys.has("ArrowRight") || keys.has("d")) dx += 1;
+      if (keys.has("ArrowUp") || keys.has("w")) dy -= 1;
+      if (keys.has("ArrowDown") || keys.has("s")) dy += 1;
+      if (dx || dy){ const l = Math.hypot(dx, dy); dx /= l; dy /= l; }
+      else { dx = S.joy.x; dy = S.joy.y; }    // 키보드를 안 쓰면 조이스틱(길이만큼 속도)
       const before = { ...S.me };
       if (dx || dy){
         S.target = null;
-        const l = Math.hypot(dx, dy);
-        S.me = { ...clampYard({ x: S.me.x + dx/l*SPEED*dt, y: S.me.y + dy/l*SPEED*dt }), moving: true };
+        S.me = { ...clampYard({ x: S.me.x + dx*SPEED*dt, y: S.me.y + dy*SPEED*dt }), moving: true };
       } else if (S.target){
         const vx = S.target.x - S.me.x, vy = S.target.y - S.me.y, d = Math.hypot(vx, vy);
         if (d < 4){ S.target = null; S.me.moving = false; }
@@ -148,12 +172,12 @@ export function createYard(canvas, opts = {}){
     // 다른 학생 → 조금 흐리게, 작게. 아래쪽에 있는 사람을 나중에 그려 겹침이 자연스럽게.
     const now = performance.now();
     const list = [];
-    for (const [id, o] of S.others){
+    for (const [id, o] of (S.hideOthers ? [] : S.others)){
       const m = S.meta.get(id); if (!m) continue;
       const p = lerpPos(o, now);
-      list.push({ y: p.y, fn: () => drawPlayer(ctx, { ...p, moving: o.moving }, { mine: false, t: S.t, name: m.name, colorCss: colorCss(m.color) }) });
+      list.push({ y: p.y, fn: () => drawPlayer(ctx, { ...p, moving: o.moving }, { mine: false, t: S.t, name: m.name, color: m.color }) });
     }
-    if (!spectator) list.push({ y: S.me.y + 1000, fn: () => drawPlayer(ctx, S.me, { mine: true, t: S.t, name: S.myName, colorCss: colorCss(S.myColor) }) });
+    if (!spectator) list.push({ y: S.me.y + 1000, fn: () => drawPlayer(ctx, S.me, { mine: true, t: S.t, name: S.myName, color: S.myColor }) });
     list.sort((a,b) => a.y - b.y).forEach(x => x.fn());
   }
 
@@ -166,7 +190,7 @@ export function createYard(canvas, opts = {}){
       S.raf = requestAnimationFrame(step);
     },
     stop(){ cancelAnimationFrame(S.raf); S.raf = 0; keys.clear(); },
-    bindPad,
+    bindJoystick,
     applyPositions,
     on(name, fn){ handlers[name] = fn; },
     setMe({ id, name, color }){ if (id) S.myId = id; if (name) S.myName = name; if (color) S.myColor = color; },
@@ -175,13 +199,15 @@ export function createYard(canvas, opts = {}){
       S.zones = zones || []; S.type = type || "ox";
       S.answered = false; S.answer = undefined; S.picked = undefined; S.counts = null;
       S.hintOpen = false; S.frozen = spectator; S.target = null; S.lastZoneKey = undefined;
+      S.hideOthers = !spectator;
+      S.releaseJoy?.();
       S.me = { ...START, moving: false };
       keys.clear();
     },
-    setReveal({ answer, picked }){ S.answered = true; S.answer = answer; S.picked = picked; S.frozen = true; S.target = null; keys.clear(); },
+    setReveal({ answer, picked }){ S.answered = true; S.answer = answer; S.picked = picked; S.frozen = true; S.target = null; S.hideOthers = false; keys.clear(); S.releaseJoy?.(); },
     setCounts(counts){ S.counts = counts; },
     setHintOpen(v){ S.hintOpen = v; },
-    freeze(v){ S.frozen = !!v; if (v) keys.clear(); },
+    freeze(v){ S.frozen = !!v; if (v){ keys.clear(); S.releaseJoy?.(); } },
     clearZones(){ S.zones = []; S.counts = null; S.answered = false; },
     me(){ return { ...S.me }; },
     zoneHere(){ return zoneAt(S.me, S.zones); }

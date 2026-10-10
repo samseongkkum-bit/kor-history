@@ -6,7 +6,6 @@ body{font-size:18px; line-height:28px}
 .preview{width:160px; height:160px; align-self:center; border-radius:var(--r-md); border:1px solid var(--hairline); background:var(--ground)}
 .btn{min-height:52px}           /* 48px 이상 */
 .btn.wide{width:100%; justify-content:center; font-size:20px; min-height:60px}
-.pad button{min-width:56px; min-height:56px}
 .err{color:var(--wrong); font-weight:700}
 .pill{display:inline-block; align-self:flex-start; font-weight:700; background:var(--hanji); border:2px solid var(--hwang); border-radius:999px; padding:6px var(--s4)}
 .mid .pill,.result .pill{align-self:center}
@@ -31,7 +30,7 @@ body{font-size:18px; line-height:28px}
   .controls{gap:var(--s2)}
   .actions{gap:var(--s2)}
   .actions .btn{flex:1 1 44%; padding-inline:var(--s4)}
-  .pad{grid-template-columns:repeat(3,64px); grid-template-rows:repeat(2,56px); justify-self:center; margin-top:var(--s2)}
+  .joy{width:148px; height:148px; justify-self:center; margin-top:var(--s2)}
   .score{font-size:64px}
   .rank .title{font-size:38px; line-height:46px}
   .preview{width:132px; height:132px}

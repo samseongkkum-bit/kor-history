@@ -10,6 +10,9 @@ begin
   v := host_create_room(); v_code := v ->> 'code';
   for i in 1..30 loop perform play_join(v_code, '학생' || i, 'red'); end loop;
   assert (select count(*) from players where room_code = v_code) = 30, '30명까지 들어온다';
+  -- 모두 'red'를 달라고 했어도 저고리 색은 서로 겹치지 않는다
+  assert (select count(distinct color) from players where room_code = v_code) = 30, '30명의 색이 모두 다르다';
+  assert (select bool_and(color = any(hq_colors())) from players where room_code = v_code), '정해진 색 목록 안에서 준다';
   begin
     perform play_join(v_code, '서른한번째', 'red');
   exception when raise_exception then ok := true;
@@ -236,12 +239,12 @@ begin
   v := host_create_room(); v_code := v->>'code'; v_host := (v->>'hostToken')::uuid;
   v := play_join(v_code, '민수', 'red'); t := (v->>'playerToken')::uuid;
   perform host_start(v_code, v_host);
-  update players set score = 3 where room_code = v_code;
+  update players set score = 30 where room_code = v_code;
   perform host_end(v_code, v_host);
   v_snap := get_snapshot(v_code, null);
   assert v_snap ->> 'phase' = 'final', '강제 종료하면 최종 결과';
-  assert (v_snap -> 'ranking' -> 0 ->> 'score')::int = 3;
-  assert (v_snap -> 'ranking' -> 0 ->> 'title') = '양민', '3점은 양민';
+  assert (v_snap -> 'ranking' -> 0 ->> 'score')::int = 30;
+  assert (v_snap -> 'ranking' -> 0 ->> 'title') = '양민', '30점은 양민';
   delete from rooms where code = v_code;
   raise notice '강제 종료 테스트 통과';
 end $$;
@@ -265,7 +268,7 @@ do $$
 declare want text[] := array['천민','천민','천민','양민','양민','평민','평민','귀족','귀족','조선의 학자','왕']; i int;
 begin
   for i in 0..10 loop
-    assert hq_title(i) = want[i + 1], i || '점은 ' || want[i + 1];
+    assert hq_title(i * 10) = want[i + 1], (i * 10) || '점은 ' || want[i + 1];
   end loop;
   raise notice '칭호 테스트 통과';
 end $$;

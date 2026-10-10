@@ -21,7 +21,6 @@
     <section class="board" id="s-join">
       <h1 class="display">한옥 마당에서<br><span class="hl">정답 자리</span>로 달려가요!</h1>
       <p>훈장님이 문제를 내면, 내 캐릭터를 움직여 정답이라고 생각하는 자리에 서세요.</p>
-      <canvas class="preview" id="pv" width="440" height="440" aria-label="내 캐릭터 미리보기"></canvas>
 
       <div class="field">
         <label for="code">입장 코드 (숫자 4자리)</label>
@@ -32,10 +31,7 @@
         <input type="text" id="pname" maxlength="8" autocomplete="off" placeholder="이름을 써 주세요">
         <p class="cap muted">별명을 써도 괜찮아요. 전화번호나 학교 이름처럼 나를 알 수 있는 정보는 쓰지 말아 주세요.</p>
       </div>
-      <div class="field">
-        <span class="lbl" id="clbl">저고리 색</span>
-        <div class="row" role="group" aria-labelledby="clbl" id="colors"></div>
-      </div>
+      <p class="cap muted">저고리 색은 마당에 들어가면 친구들과 겹치지 않게 정해 줘요.</p>
 
       <p class="err" id="joinErr" role="alert" hidden></p>
       <div class="actions">
@@ -47,6 +43,8 @@
     <section class="board mid" id="s-wait" hidden>
       <h1>마당에 들어왔어요!</h1>
       <p class="big" id="waitWho"></p>
+      <canvas class="preview" id="pv" width="440" height="440" aria-label="내 캐릭터"></canvas>
+      <p id="waitColor"></p>
       <p class="muted">훈장님이 문제를 낼 때까지 조금만 기다려 주세요. 그동안 마당을 걸어 다녀도 돼요.</p>
       <p class="pill" id="waitCount"></p>
     </section>
@@ -63,7 +61,7 @@
         <ol class="choices" id="choices" hidden></ol>
         <div class="timer"><div class="bar"><div class="fill" id="tfill"></div></div><span class="sec" id="tsec"></span></div>
       </div>
-      <div class="stage" id="stage" tabindex="0" aria-label="한옥 마당. 방향키로 캐릭터를 움직여 정답 자리에 서세요.">
+      <div class="stage" id="stage" tabindex="0" aria-label="한옥 마당. 조이스틱으로 캐릭터를 움직여 정답 자리에 서세요.">
         <canvas id="yard" width="1920" height="1200"></canvas>
       </div>
       <div class="controls">
@@ -75,12 +73,7 @@
             <button class="btn btn-secondary" type="button" id="hintBtn">힌트 보기</button>
           </div>
         </div>
-        <div class="pad" id="pad" aria-label="이동 버튼">
-          <button class="up" type="button" data-dir="up" aria-label="위로">▲</button>
-          <button class="left" type="button" data-dir="left" aria-label="왼쪽으로">◀</button>
-          <button class="down" type="button" data-dir="down" aria-label="아래로">▼</button>
-          <button class="right" type="button" data-dir="right" aria-label="오른쪽으로">▶</button>
-        </div>
+        <div class="joy" id="joy" role="application" aria-label="조이스틱. 끌어서 캐릭터를 움직여요"><div class="knob"></div></div>
       </div>
       <div class="feedback" id="fb" hidden>
         <div class="verdict" id="verdict">
@@ -121,7 +114,7 @@
     </section>
 
   </main>
-  <footer class="cap muted" id="foot">방향키·WASD로 걷기 · 마당을 눌러도 그쪽으로 걸어가요</footer>
+  <footer class="cap muted" id="foot">조이스틱을 끌어서 걷기 · 마당을 눌러도 그쪽으로 걸어가요 · 친구들은 정답이 공개되면 보여요</footer>
 </div>
 
 <script src="/config.js"></script>

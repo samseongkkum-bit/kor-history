@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 import { createRoom, joinAs, answer, findQuestion, waitForQuestion } from "./helpers.js";
 
 test("진행자 1명과 학생 3명이 10문제를 끝까지 진행한다", async ({ browser }) => {
-  test.setTimeout(400_000);          // O/X 12초 × 10문제 + 채점·해설 시간
+  test.setTimeout(500_000);          // O/X 22초 × 10문제 + 채점·해설 시간
 
   const ctxHost = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const host = await ctxHost.newPage();
@@ -13,10 +13,10 @@ test("진행자 1명과 학생 3명이 10문제를 끝까지 진행한다", asyn
 
   // 학생 3명: 가(늘 정답), 나(늘 오답), 다(앞 5문제만 정답 + 중간에 새로고침)
   const students = [];
-  for (const [name, color] of [["가","red"],["나","cheong"],["다","hwang"]]){
+  for (const name of ["가","나","다"]){
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
-    await joinAs(page, code, name, color);
+    await joinAs(page, code, name);
     students.push({ name, page, ctx });
   }
   const [A, B, C] = students;
@@ -65,7 +65,7 @@ test("진행자 1명과 학생 3명이 10문제를 끝까지 진행한다", asyn
     if (i === 1) await host.screenshot({ path: "screenshots/host-2-question.png" });
 
     // 서버가 마감 시각에 채점한다 → 정답 공개
-    await expect(host.locator("#revealcard")).toBeVisible({ timeout: 30_000 });
+    await expect(host.locator("#revealcard")).toBeVisible({ timeout: 45_000 });
     await expect(host.locator("#ranswer")).toContainText(right === "O" ? "○" : "×");
     await expect(host.locator("#rexplain")).toHaveText(q.ex);
     await expect(host.locator("#top5")).toContainText("가");
@@ -73,11 +73,11 @@ test("진행자 1명과 학생 3명이 10문제를 끝까지 진행한다", asyn
     // 학생 화면: 내 정답/오답 + 해설 + 내 점수
     await expect(A.page.locator("#vtitle")).toHaveText("정답이에요!");
     await expect(A.page.locator("#vsym")).toHaveText("○");
-    await expect(A.page.locator("#myscore")).toHaveText(`지금까지 ${i}점이에요`);
+    await expect(A.page.locator("#myscore")).toHaveText(`지금까지 ${i * 10}점이에요`);
     await expect(B.page.locator("#vtitle")).toHaveText("아쉬워요!");
     await expect(B.page.locator("#vsym")).toHaveText("×");
     await expect(B.page.locator("#explain")).toHaveText(q.ex);
-    await expect(C.page.locator("#myscore")).toHaveText(`지금까지 ${Math.min(i,5)}점이에요`);
+    await expect(C.page.locator("#myscore")).toHaveText(`지금까지 ${Math.min(i,5) * 10}점이에요`);
 
     if (i === 1) await host.screenshot({ path: "screenshots/host-3-reveal.png" });
 
@@ -89,7 +89,7 @@ test("진행자 1명과 학생 3명이 10문제를 끝까지 진행한다", asyn
   await expect(host.locator("#s-final")).toBeVisible({ timeout: 30_000 });
   const rows = host.locator("#finalList li");
   await expect(rows).toHaveCount(3);
-  for (const [i, name, title, score] of [[0,"가","왕","10점"],[1,"다","평민","5점"],[2,"나","천민","0점"]]){
+  for (const [i, name, title, score] of [[0,"가","왕","100점"],[1,"다","평민","50점"],[2,"나","천민","0점"]]){
     await expect(rows.nth(i).locator(".no")).toHaveText(String(i+1));
     await expect(rows.nth(i).locator(".nm")).toHaveText(name);
     await expect(rows.nth(i).locator(".ti")).toHaveText(title);
@@ -97,7 +97,7 @@ test("진행자 1명과 학생 3명이 10문제를 끝까지 진행한다", asyn
   }
 
   // 학생 화면의 점수와 칭호
-  for (const [s, score, title] of [[A,10,"왕"],[C,5,"평민"],[B,0,"천민"]]){
+  for (const [s, score, title] of [[A,100,"왕"],[C,50,"평민"],[B,0,"천민"]]){
     await expect(s.page.locator("#s-final")).toBeVisible({ timeout: 20_000 });
     await expect(s.page.locator("#finalScore")).toContainText(String(score));
     await expect(s.page.locator("#finalTitle")).toHaveText(title);

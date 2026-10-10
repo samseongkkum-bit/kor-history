@@ -1,7 +1,7 @@
 // 진행자 화면. 방을 만들고 단계를 고르고 문제를 넘긴다. 마당은 관전용으로 크게 보여 준다.
 // 채점과 시간은 Supabase(Postgres 함수)가 정하고, 이 화면은 마감 시각에 채점 함수를 불러 줄 뿐이다.
-import { COLORS, esc } from "/shared/consts.js";
-import { drawPerson, cv } from "/shared/draw.js";
+import { esc } from "/shared/consts.js";
+import { drawPerson, cv, jacket } from "/shared/draw.js";
 import { createYard } from "/shared/yard.js";
 import { zonesFor, zoneAt } from "/shared/map.js";
 import { api, watchRoom, positionRelay, configMissing, NetError } from "/shared/net.js";
@@ -268,7 +268,7 @@ function renderPlayers(players, phase){
     cvs.width = 64; cvs.height = 80;
     const ctx = cvs.getContext("2d");
     ctx.setTransform(1.1,0,0,1.1,0,0);
-    drawPerson(ctx, 29, 58, { upper: cv((COLORS.find(c => c.id === p.color) || COLORS[0]).css), lower: cv("--meok-muted"), ribbon: cv("--red") });
+    drawPerson(ctx, 29, 58, { upper: jacket(p.color), lower: cv("--meok-muted"), ribbon: cv("--red") });
     li.appendChild(cvs);
     const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = p.name; li.appendChild(nm);
     const tag = (cls, t) => { const s = document.createElement("span"); s.className = cls; s.textContent = t; li.appendChild(s); };
