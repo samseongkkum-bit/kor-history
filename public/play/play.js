@@ -1,5 +1,5 @@
 // 학생 화면. 내 캐릭터만 내 기기가 움직이고, 채점과 시간은 Supabase(Postgres 함수)가 정한다.
-import { RANKS, NUMS, POINTS, esc, rankOf, colorInfo } from "/shared/consts.js";
+import { RANKS, NUMS, POINTS, KINDS, esc, rankOf, ieyo, colorInfo } from "/shared/consts.js";
 import { drawPerson, cv, jacket } from "/shared/draw.js";
 import { createYard } from "/shared/yard.js";
 import { zonesFor } from "/shared/map.js";
@@ -116,6 +116,7 @@ function ensureYard(){
     posToServer(p);                       // 서버에도 이따금 알려 둔다(마감 때 이 위치로 채점한다)
   });
   yard.on("zone", z => {
+    if (curType === "sa") return;            // 주관식에는 돗자리가 없다
     const dec = $("decide");
     $("where").innerHTML = z
       ? (curType === "ox" ? `<b>${z.label}</b> 자리에 서 있어요.` : `<b>${z.label} ${esc(z.sub)}</b> 자리에 서 있어요.`)
@@ -141,6 +142,53 @@ function ensureYard(){
     } catch { $("decide").disabled = false; }
   };
   $("hintBtn").onclick = openHint;
+  bindAnswer();
+}
+
+/* ---------------- 주관식 답 ---------------- */
+// 쓰는 동안 조금씩 서버에 맡겨 둔다(답 내기를 안 눌러도 마감 때 써 둔 답으로 채점한다).
+let ansTimer = 0, ansSent = null;
+function bindAnswer(){
+  $("ans").addEventListener("input", () => {
+    $("ansBtn").disabled = !$("ans").value.trim() || $("ansBtn").dataset.locked === "1";
+    clearTimeout(ansTimer);
+    ansTimer = setTimeout(sendDraft, 700);
+  });
+  $("ansForm").onsubmit = async e => {
+    e.preventDefault();
+    const text = $("ans").value.trim();
+    if (!text || $("ansBtn").dataset.locked === "1") return;
+    clearTimeout(ansTimer);
+    $("ansBtn").disabled = true;
+    try {
+      const r = await api.playAnswer(me.token, text, true);
+      if (r?.ok){ ansSent = text; lockAnswer(); }
+      else $("ansBtn").disabled = false;
+    } catch { $("ansBtn").disabled = false; }
+  };
+}
+function sendDraft(){
+  if (curType !== "sa" || $("ansBtn").dataset.locked === "1") return;
+  const text = $("ans").value.trim();
+  if (text === (ansSent ?? "")) return;
+  ansSent = text;
+  api.playAnswer(me.token, text, false).catch(() => { ansSent = null; });
+}
+function lockAnswer(){
+  $("ansBtn").dataset.locked = "1"; $("ansBtn").disabled = true;
+  $("ansBtn").textContent = "냈어요!";
+  $("ans").disabled = true;
+  $("where").textContent = "답을 냈어요. 채점을 기다려요!";
+}
+
+// 문제 종류에 맞게 조작판을 바꾼다. 주관식은 마당·조이스틱 대신 답 쓰는 칸을 보여 준다.
+function setMode(type){
+  const sa = type === "sa";
+  $("stage").hidden = sa; $("joy").hidden = sa; $("decide").hidden = sa;
+  $("ansForm").hidden = !sa; $("ansBtn").hidden = !sa;
+  $("foot").textContent = sa
+    ? "답을 쓰고 [답 내기]를 눌러요 · 띄어쓰기는 틀려도 괜찮아요 · 친구들 답은 보이지 않아요"
+    : "조이스틱을 끌어서 걷기 · 마당을 눌러도 그쪽으로 걸어가요 · 친구들은 정답이 공개되면 보여요";
 }
 
 // 위치를 서버에 알리는 간격. 자주 보내면 요청이 너무 많아지고,
@@ -158,6 +206,7 @@ function scheduleFinalPos(endsAtMs){
   const wait = endsAtMs - watch.serverNow() - 1200;
   if (wait < 0) return;
   finalSendTimer = setTimeout(() => {
+    if (curType === "sa"){ clearTimeout(ansTimer); sendDraft(); return; }
     const p = pendingPos || yard?.me();
     if (p) api.playMove(me.token, p.x, p.y).catch(() => {});
   }, wait);
@@ -209,21 +258,28 @@ function renderQuestion(s){
     shownQ = s.qIndex; shownPhase = "question";
     hintOpen = false;
     $("qnum").textContent = `${s.qIndex + 1} / ${total}`;
-    $("qkind").textContent = q.type === "ox" ? "O/X" : "객관식";
+    $("qkind").textContent = KINDS[q.type] || q.type;
     $("qtext").textContent = q.q;
     $("choices").hidden = !(q.type === "mc" && q.choices);
     if (q.type === "mc" && q.choices)
       $("choices").innerHTML = q.choices.map((c, k) => `<li><b>${NUMS[k]}</b><span>${esc(c)}</span></li>`).join("");
+    setMode(q.type);
     $("fb").hidden = true;
     document.querySelector("#s-quiz .controls").hidden = false;
     $("hintbox").hidden = true; $("hintBtn").hidden = false;
     $("decide").dataset.locked = "0"; $("decide").disabled = true; $("decide").textContent = "여기로 결정!";
     $("where").textContent = "아직 자리를 고르지 않았어요.";
+    clearTimeout(ansTimer); ansSent = null;
+    $("ansBtn").dataset.locked = "0"; $("ansBtn").textContent = "답 내기";
+    $("ans").disabled = false; $("ans").value = s.you?.typed || "";
+    $("ansBtn").disabled = !$("ans").value.trim();
+    if (q.type === "sa") $("where").textContent = "답을 쓰고 [답 내기]를 눌러요. 안 눌러도 시간이 끝날 때 써 둔 답으로 채점해요.";
     yard.setQuestion({ zones: zonesOf(q), type: q.type });
     yard.setMe({ id: me.id, name: me.name, color: me.color });
     drawDots();
     show("s-quiz");
-    $("stage").focus({ preventScroll: true });
+    if (q.type === "sa") $("ans").focus({ preventScroll: true });
+    else $("stage").focus({ preventScroll: true });
     startTimer(s);
     scheduleFinalPos(new Date(s.endsAt).getTime());
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -231,9 +287,15 @@ function renderQuestion(s){
 
   // 새로고침했어도 "이미 정했다 / 이번 문제는 쉰다 / 힌트를 봤다"를 그대로 이어받는다
   if (s.you?.pending){
-    $("where").textContent = "다음 문제부터 함께해요! 마당을 걸어 다녀도 돼요.";
+    $("where").textContent = q.type === "sa" ? "다음 문제부터 함께해요!" : "다음 문제부터 함께해요! 마당을 걸어 다녀도 돼요.";
     $("decide").dataset.locked = "1"; $("decide").disabled = true;
+    $("ans").disabled = true; $("ansBtn").dataset.locked = "1"; $("ansBtn").disabled = true;
     $("hintBtn").hidden = true;
+  } else if (q.type === "sa"){
+    if (s.you?.locked && $("ansBtn").dataset.locked !== "1"){
+      if (s.you.typed) $("ans").value = s.you.typed;
+      lockAnswer();
+    }
   } else if (s.you?.locked && $("decide").dataset.locked !== "1"){
     $("decide").dataset.locked = "1"; $("decide").disabled = true;
     $("decide").textContent = "여기로 정했어요!";
@@ -271,8 +333,10 @@ function renderReveal(s){
     // 이 문제를 못 보고 들어왔다면 문제부터 그려 준다
     if (shownQ !== s.qIndex){
       shownQ = s.qIndex;
+      curType = q.type;
+      setMode(q.type);
       $("qnum").textContent = `${s.qIndex + 1} / ${total}`;
-      $("qkind").textContent = q.type === "ox" ? "O/X" : "객관식";
+      $("qkind").textContent = KINDS[q.type] || q.type;
       $("qtext").textContent = q.q;
       $("choices").hidden = !(q.type === "mc" && q.choices);
       if (q.type === "mc" && q.choices)
@@ -283,11 +347,12 @@ function renderReveal(s){
   }
   stopTimer();
   $("tsec").textContent = "끝!";
-  clearTimeout(finalSendTimer);
+  clearTimeout(finalSendTimer); clearTimeout(ansTimer);
+  $("ans").blur();
 
   const you = s.you;
   const mine = you && you.answered;
-  yard.setReveal({ answer: q.answer, picked: mine ? you.picked : undefined });
+  yard.setReveal({ answer: q.answer, picked: mine && q.type !== "sa" ? you.picked : undefined });
 
   if (mine){
     answers[s.qIndex] = !!you.correct;
@@ -295,8 +360,11 @@ function renderReveal(s){
     $("verdict").className = "verdict " + (you.correct ? "ok" : "no");
     $("vsym").textContent = you.correct ? "○" : "×";
     $("vtitle").textContent = you.correct ? "정답이에요!" : (timeout ? "시간이 끝났어요!" : "아쉬워요!");
-    $("vsub").hidden = !!you.correct;
-    if (!you.correct)
+    $("vsub").hidden = !!you.correct && q.type !== "sa";
+    if (q.type === "sa")
+      $("vsub").innerHTML = (timeout ? "답을 쓰지 않았어요. " : `내 답: <b>${esc(you.picked)}</b><br>`)
+        + (you.correct ? "" : `정답은 <b>${esc(q.answerLabel)}</b>${ieyo(q.answerLabel)}.`);
+    else if (!you.correct)
       $("vsub").innerHTML = `${timeout ? "정답 자리에 서 있지 않았어요. " : ""}정답은 <b>${esc(q.answerLabel)}</b>예요.`;
   } else {
     // 중간에 들어와 이번 문제는 쉰 경우에도 해설은 보여 준다
@@ -304,7 +372,7 @@ function renderReveal(s){
     $("vsym").textContent = "○";
     $("vtitle").textContent = "정답을 알려 줄게요";
     $("vsub").hidden = false;
-    $("vsub").innerHTML = `정답은 <b>${esc(q.answerLabel)}</b>예요.`;
+    $("vsub").innerHTML = `정답은 <b>${esc(q.answerLabel)}</b>${q.type === "sa" ? ieyo(q.answerLabel) : "예요"}.`;
   }
   $("explain").textContent = q.explain || "";
   $("myscore").textContent = `지금까지 ${me.score}점이에요`;

@@ -67,9 +67,14 @@
       <div class="controls">
         <div class="status">
           <p class="where" id="where">아직 자리를 고르지 않았어요.</p>
+          <form class="answer" id="ansForm" hidden>
+            <label for="ans">내 답</label>
+            <input type="text" id="ans" maxlength="30" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" placeholder="답을 써 주세요">
+          </form>
           <p class="hint" id="hintbox" hidden><b>힌트</b> · <span id="hinttext"></span></p>
           <div class="actions">
             <button class="btn btn-primary" type="button" id="decide" disabled>여기로 결정!</button>
+            <button class="btn btn-primary" type="submit" form="ansForm" id="ansBtn" hidden disabled>답 내기</button>
             <button class="btn btn-secondary" type="button" id="hintBtn">힌트 보기</button>
           </div>
         </div>

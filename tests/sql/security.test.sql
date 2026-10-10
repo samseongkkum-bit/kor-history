@@ -21,7 +21,7 @@ begin
   v_code := current_setting('test.code');
 
   /* ---- 읽을 수 있어야 하는 것 ---- */
-  select count(*) into n from levels;      assert n = 2, '단계 목록은 볼 수 있다';
+  select count(*) into n from levels;      assert n = 3, '단계 목록은 볼 수 있다';
   select count(*) into n from rooms;       assert n >= 1, '방의 겉 상태는 볼 수 있다';
   select count(*) into n from players;     assert n >= 1, '학생 이름·색·점수는 볼 수 있다';
 

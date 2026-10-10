@@ -127,7 +127,7 @@ begin
 
   -- 새 문제는 모두 출발선에서 다시 시작한다. 지난 문제 중간에 들어온 학생도 이제 함께 푼다.
   update players set
-    pending = false, hint_used = false,
+    pending = false, hint_used = false, typed = null,
     locked_x = null, locked_y = null, locked_at = null,
     pos_x = 480, pos_y = 540, pos_at = now(), moving = false
   where room_code = p_code;
@@ -284,8 +284,14 @@ begin
     v_y  := coalesce(p.locked_y, p.pos_y);
     v_at := coalesce(p.locked_at, v_room.ends_at);
 
-    v_picked  := hq_zone_at(v_type, v_x, v_y);
-    v_correct := v_picked is not null and v_picked = v_answer;
+    if v_type = 'sa' then
+      -- 주관식: 마감 때까지 써 둔 답("답 내기"를 눌렀으면 그때 낸 답)
+      v_picked  := nullif(btrim(p.typed), '');
+      v_correct := v_picked is not null and hq_sa_correct(v_picked, v_answer, v_q -> 'accept');
+    else
+      v_picked  := hq_zone_at(v_type, v_x, v_y);
+      v_correct := v_picked is not null and v_picked = v_answer;
+    end if;
     -- 빠르기 보너스: 점수에는 더하지 않고 순위 동점 처리에만 쓴다
     v_bonus := case when v_correct
       then greatest(0, least(1, extract(epoch from (v_room.ends_at - v_at)) * 1000 / v_total_ms))
@@ -422,11 +428,37 @@ begin
   end if;
 
   select rs.round -> v_room.q_index ->> 'type' into v_type from room_secrets rs where rs.code = p.room_code;
+  if v_type = 'sa' then return jsonb_build_object('ok', false, 'reason', 'type'); end if;   -- 주관식은 play_answer
   v_zone := hq_zone_at(v_type, p.pos_x, p.pos_y);
   if v_zone is null then return jsonb_build_object('ok', false, 'reason', 'zone'); end if;
 
   update players set locked_x = pos_x, locked_y = pos_y, locked_at = now() where id = p.id;
   return jsonb_build_object('ok', true, 'zone', v_zone);
+end $$;
+
+-- 주관식 답을 써 둔다. p_lock 이면 "답 내기" — 그 순간의 시각을 고정하고(빠르기 보너스의 근거) 더는 못 고친다.
+-- 답 내기를 누르지 않아도 마감 때 써 둔 답으로 채점한다.
+create or replace function play_answer(p_token uuid, p_text text, p_lock boolean default false)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare p players%rowtype; v_room rooms%rowtype; v_type text; v_text text;
+begin
+  select pl.* into p from players pl join player_secrets ps on ps.player_id = pl.id where ps.token = p_token;
+  if not found then return jsonb_build_object('ok', false, 'reason', 'player'); end if;
+
+  select * into v_room from rooms where code = p.room_code;
+  if v_room.phase <> 'question' or now() > v_room.ends_at or p.pending or p.locked_at is not null then
+    return jsonb_build_object('ok', false, 'reason', 'phase');
+  end if;
+  select rs.round -> v_room.q_index ->> 'type' into v_type from room_secrets rs where rs.code = p.room_code;
+  if v_type is distinct from 'sa' then return jsonb_build_object('ok', false, 'reason', 'type'); end if;
+
+  v_text := nullif(left(btrim(regexp_replace(coalesce(p_text, ''), '\s+', ' ', 'g')), 30), '');
+  if p_lock and v_text is null then return jsonb_build_object('ok', false, 'reason', 'empty'); end if;
+
+  update players set typed = v_text, last_seen = now(),
+         locked_at = case when p_lock then now() end
+   where id = p.id;
+  return jsonb_build_object('ok', true, 'locked', p_lock);
 end $$;
 
 -- 힌트는 물어본 학생에게만 돌려준다.
@@ -487,6 +519,7 @@ begin
         'id', pl.id, 'name', pl.name, 'color', pl.color, 'score', pl.score,
         'pending', pl.pending, 'hintUsed', pl.hint_used, 'locked', pl.locked_at is not null,
         'answered', a.player_id is not null, 'correct', a.correct, 'picked', a.picked,
+        'typed', pl.typed,
         'invite', case when not pl.moved then pl.invited_to end
       ) into v_you
       from players pl
@@ -564,7 +597,8 @@ begin
     'host_new_room(text,uuid)', 'host_invite(text,uuid,uuid)', 'play_accept_invite(uuid)',
     'grade_question(text)',
     'play_join(text,text,text,uuid)', 'play_move(uuid,double precision,double precision)',
-    'play_lock(uuid,double precision,double precision)', 'play_hint(uuid)', 'play_leave(uuid)',
+    'play_lock(uuid,double precision,double precision)', 'play_answer(uuid,text,boolean)',
+    'play_hint(uuid)', 'play_leave(uuid)',
     'get_snapshot(text,uuid)', 'get_levels()', 'get_today_total()'
   ] loop
     execute format('grant execute on function %s to %s', fn, roles);

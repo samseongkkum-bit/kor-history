@@ -1,6 +1,6 @@
 // 진행자 화면. 방을 만들고 단계를 고르고 문제를 넘긴다. 마당은 관전용으로 크게 보여 준다.
 // 채점과 시간은 Supabase(Postgres 함수)가 정하고, 이 화면은 마감 시각에 채점 함수를 불러 줄 뿐이다.
-import { esc } from "/shared/consts.js";
+import { esc, KINDS } from "/shared/consts.js";
 import { drawPerson, cv, jacket } from "/shared/draw.js";
 import { createYard } from "/shared/yard.js";
 import { zonesFor, zoneAt } from "/shared/map.js";
@@ -27,7 +27,7 @@ async function loadLevels(){
   try { levels = await api.levels(); } catch { levels = []; }
   $("levels").innerHTML = levels.map(l =>
     `<button class="lvbtn" type="button" data-level="${esc(l.key)}" aria-pressed="false"><b>${esc(l.name)}</b><span>${esc(l.kind)} · ${l.total}문제</span></button>`
-  ).join("") + `<button class="lvbtn" type="button" disabled><b>고등부</b><span>준비 중</span></button>`;
+  ).join("");
   $("levels").querySelectorAll("[data-level]").forEach(b => b.onclick = async () => {
     try { render(await api.hostLevel(room.code, room.hostToken, b.dataset.level)); } catch (e) { console.warn(e.message); }
   });
@@ -199,7 +199,7 @@ function render(s){
 function fillQuestion(s){
   const q = s.question;
   $("qnum").textContent = `${s.qIndex + 1} / ${s.total}`;
-  $("qkind").textContent = q.type === "ox" ? "O/X" : "객관식";
+  $("qkind").textContent = KINDS[q.type] || q.type;
   $("qtext").textContent = q.q;
   $("qcard").hidden = false;
   curZones = zonesFor({ t: q.type, c: q.choices });
@@ -213,6 +213,11 @@ function renderQuestion(s){
     fillQuestion(s);
     $("revealcard").hidden = true;
     startTimer(s);
+  }
+  // 주관식은 돗자리가 없으니 답을 낸 학생 수를 보여 준다
+  if (s.question.type === "sa"){
+    const playing = (s.players || []).filter(p => !p.pending);
+    $("zoneline").textContent = `답을 낸 학생 ${playing.filter(p => p.locked).length}명 / ${playing.length}명 · 시간이 끝나면 써 둔 답으로 채점해요`;
   }
 }
 

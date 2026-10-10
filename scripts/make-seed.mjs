@@ -8,20 +8,25 @@ let sql = `-- data/questions.json 에서 자동으로 만든 파일입니다. �
 -- data/questions.json 을 고친 뒤 \`npm run seed\` 를 실행하세요.
 
 delete from questions;
-delete from levels;
 
+-- 단계는 지우지 않고 고쳐 쓴다(열려 있는 방이 단계를 가리키고 있어도 다시 실행할 수 있게).
 insert into levels(key, name, kind, descr, sort) values\n`;
 
 sql += Object.entries(QUIZ).map(([key, lv], i) =>
-  `  (${lit(key)}, ${lit(lv.name)}, ${lit(lv.kind)}, ${lit(lv.desc)}, ${i})`).join(",\n") + ";\n\n";
+  `  (${lit(key)}, ${lit(lv.name)}, ${lit(lv.kind)}, ${lit(lv.desc)}, ${i})`).join(",\n") +
+  "\non conflict (key) do update set name = excluded.name, kind = excluded.kind, descr = excluded.descr, sort = excluded.sort;\n" +
+  `delete from levels l where l.key not in (${Object.keys(QUIZ).map(lit).join(", ")})\n` +
+  "  and not exists (select 1 from rooms r where r.level = l.key);\n\n";
 
-sql += "insert into questions(level, idx, type, q, choices, answer, hint, explain) values\n";
+sql += "insert into questions(level, idx, type, q, choices, answer, accept, hint, explain) values\n";
 const rows = [];
 for (const [key, lv] of Object.entries(QUIZ)){
   lv.questions.forEach((q, idx) => {
     const choices = q.t === "mc" ? `${lit(JSON.stringify(q.c))}::jsonb` : "null";
     const answer = q.t === "mc" ? String(q.a) : q.a;
-    rows.push(`  (${lit(key)}, ${idx}, ${lit(q.t)}, ${lit(q.q)}, ${choices}, ${lit(answer)}, ${lit(q.hint)}, ${lit(q.ex)})`);
+    // 주관식: 정답 말고도 맞다고 쳐 줄 이름들
+    const accept = q.t === "sa" ? `${lit(JSON.stringify(q.acc || []))}::jsonb` : "null";
+    rows.push(`  (${lit(key)}, ${idx}, ${lit(q.t)}, ${lit(q.q)}, ${choices}, ${lit(answer)}, ${accept}, ${lit(q.hint)}, ${lit(q.ex)})`);
   });
 }
 sql += rows.join(",\n") + ";\n";

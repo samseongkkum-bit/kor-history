@@ -50,6 +50,7 @@ export const api = {
   playJoin:    (code, name, color, tok) => rpc("play_join", { p_code: code, p_name: name, p_color: color, p_token: tok || null }),
   playMove:    (token, x, y)            => rpc("play_move", { p_token: token, p_x: x, p_y: y }),
   playLock:    (token, x, y)            => rpc("play_lock", { p_token: token, p_x: x ?? null, p_y: y ?? null }),
+  playAnswer:  (token, text, lock)      => rpc("play_answer", { p_token: token, p_text: text, p_lock: !!lock }),
   playHint:    (token)                  => rpc("play_hint", { p_token: token }),
   playLeave:   (token)                  => rpc("play_leave", { p_token: token }),
   playAccept:  (token)                  => rpc("play_accept_invite", { p_token: token })

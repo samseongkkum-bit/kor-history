@@ -12,7 +12,8 @@ export const RANKS = [
 
 export const NUMS = ["①","②","③","④"];
 export const ROUND = 10;
-export const TIME = {ox:22, mc:30};          // 문제당 제한 시간(초)
+export const TIME = {ox:22, mc:30, sa:40};   // 문제당 제한 시간(초)
+export const KINDS = {ox:"O/X", mc:"객관식", sa:"주관식"};
 export const POINTS = 10;                    // 한 문제 맞히면 받는 점수(10문제 100점 만점)
 // 저고리 색. 학생이 고르지 않고, 방에 들어오면 서버가 남은 색 중 하나를 겹치지 않게 골라 준다.
 // 한 방 최대 인원(30명)만큼 있어야 한다. 같은 목록이 Postgres 함수 hq_colors() 에도 있다.
@@ -56,3 +57,5 @@ export const SPEED = 260;                    // 캐릭터 걷는 속도(px/초)
 export const shuffle = arr => { const a = arr.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; };
 export const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 export const rankOf = n => RANKS.filter(r => n >= r.min).pop();
+// "○○예요 / ○○이에요": 받침이 있으면 '이에요'
+export const ieyo = w => { const c = String(w).trim().slice(-1).charCodeAt(0) - 0xAC00; return c >= 0 && c < 11172 && c % 28 ? "이에요" : "예요"; };

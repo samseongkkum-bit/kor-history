@@ -17,6 +17,11 @@ body{font-size:18px; line-height:28px}
 .choices li{display:flex; gap:var(--s2); font-size:19px; line-height:28px}
 .choices b{color:var(--cheong); font-family:var(--serif); flex:none}
 .hint{font-size:18px; line-height:28px}
+/* 주관식: 마당 대신 답 쓰는 칸 */
+.answer{display:flex; flex-direction:column; gap:var(--s2)}
+.answer label{font-weight:700}
+.answer input[type=text]{width:100%; font-size:22px}
+.answer input[type=text]:disabled{opacity:.7}
 
 @media (max-width:480px){
   body{padding-inline:12px}
