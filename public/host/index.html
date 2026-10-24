@@ -13,7 +13,6 @@
     <span class="logo">한국<span>사</span> 퀴즈 <em>진행자 화면</em></span>
     <div class="htop-right">
       <span class="chip" id="phase">방을 만들어 주세요</span>
-      <span class="chip" id="today">오늘 참여 인원 합계 0명</span>
     </div>
   </header>
 
@@ -72,6 +71,7 @@
       <div class="card">
         <div class="actions">
           <button class="btn btn-primary" type="button" id="startBtn">게임 시작</button>
+          <button class="btn btn-primary" type="button" id="revealBtn" hidden>정답 확인</button>
           <button class="btn btn-primary" type="button" id="nextBtn" hidden>다음 문제</button>
           <button class="btn btn-secondary" type="button" id="endBtn">강제 종료</button>
         </div>
@@ -97,11 +97,11 @@
   <!-- ③ 최종 결과 -->
   <section class="board result" id="s-final" hidden>
     <p class="cap muted" id="finalHead"></p>
-    <h1 class="display">최종 순위</h1>
     <ol class="board-list final-list" id="finalList"></ol>
     <div class="actions">
       <button class="btn btn-primary" type="button" id="againBtn">새 문제로 한 판 더</button>
       <button class="btn btn-secondary" type="button" id="lobbyBtn">대기실로</button>
+      <button class="btn btn-secondary" type="button" id="newRoomBtn">새 방 만들기</button>
     </div>
   </section>
 

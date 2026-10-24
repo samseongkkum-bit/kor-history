@@ -116,7 +116,7 @@ function startWatching(){
 function ensureYard(){
   if (yard) return;
   yard = createYard($("yard"), { name: me.name, color: me.color });
-  yard.bindPad($("pad"));
+  yard.bindJoystick($("joy"));
   yard.setMe({ id: me.id, name: me.name, color: me.color });
 
   yard.on("move", p => {
@@ -153,11 +153,15 @@ function ensureYard(){
 
 // 위치를 서버에 알리는 간격. 자주 보내면 요청이 너무 많아지고,
 // 너무 드물면 마감 순간의 자리가 어긋나므로 1초에 한 번 + 마감 직전에 한 번 보낸다.
-let lastSent = 0, finalSendTimer = 0, pendingPos = null;
+// 1초 안에 또 움직였으면 그 마지막 자리를 1초가 차는 때 보낸다. 진행자가 [정답 확인]으로 일찍 마감해도 멈춘 자리로 채점되게.
+let lastSent = 0, finalSendTimer = 0, trailTimer = 0, pendingPos = null;
 function posToServer(p){
   pendingPos = p;
   const now = performance.now();
-  if (now - lastSent < 1000) return;
+  if (now - lastSent < 1000){
+    if (!trailTimer) trailTimer = setTimeout(() => { trailTimer = 0; posToServer(pendingPos); }, 1000 - (now - lastSent));
+    return;
+  }
   lastSent = now;
   api.playMove(me.token, p.x, p.y).catch(() => {});
 }
@@ -192,6 +196,8 @@ function render(s){
   if (s.you){ me.score = s.you.score; me.name = s.you.name || me.name; me.id = s.you.id || me.id; }
   yard?.setMe({ id: me.id, name: me.name, color: me.color });
   yard?.setMeta((s.players || []).filter(p => p.id !== me.id));
+  // 대기실에서는 서로 보이고, 문제를 푸는 동안에는 남을 따라가지 않게 서로 안 보인다.
+  yard?.setShowOthers(s.phase !== "question");
 
   if (s.phase === "lobby")    return renderWait(s);
   if (s.phase === "question") return renderQuestion(s);

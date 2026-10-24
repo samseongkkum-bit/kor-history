@@ -42,6 +42,7 @@ export const api = {
   hostLevel:   (code, token, level)     => rpc("host_set_level", { p_code: code, p_token: token, p_level: level }),
   hostStart:   (code, token)            => rpc("host_start",     { p_code: code, p_token: token }),
   hostNext:    (code, token)            => rpc("host_next",      { p_code: code, p_token: token }),
+  hostReveal:  (code, token)            => rpc("host_reveal_now", { p_code: code, p_token: token }),
   hostEnd:     (code, token)            => rpc("host_end",       { p_code: code, p_token: token }),
   hostKick:    (code, token, player)    => rpc("host_kick",      { p_code: code, p_token: token, p_player: player }),
 

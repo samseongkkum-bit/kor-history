@@ -75,12 +75,7 @@
             <button class="btn btn-secondary" type="button" id="hintBtn">힌트 보기</button>
           </div>
         </div>
-        <div class="pad" id="pad" aria-label="이동 버튼">
-          <button class="up" type="button" data-dir="up" aria-label="위로">▲</button>
-          <button class="left" type="button" data-dir="left" aria-label="왼쪽으로">◀</button>
-          <button class="down" type="button" data-dir="down" aria-label="아래로">▼</button>
-          <button class="right" type="button" data-dir="right" aria-label="오른쪽으로">▶</button>
-        </div>
+        <div class="joy" id="joy" aria-hidden="true"><span class="knob"></span></div>
       </div>
       <div class="feedback" id="fb" hidden>
         <div class="verdict" id="verdict">
@@ -116,7 +111,7 @@
     </section>
 
   </main>
-  <footer class="cap muted" id="foot">방향키·WASD로 걷기 · 마당을 눌러도 그쪽으로 걸어가요</footer>
+  <footer class="cap muted" id="foot">컴퓨터는 W A S D(방향키도 돼요) · 폰은 조이스틱 · 마당을 눌러도 그쪽으로 걸어가요</footer>
 </div>
 
 <script src="/config.js"></script>

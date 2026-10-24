@@ -107,11 +107,6 @@ test("진행자 1명과 학생 3명이 10문제를 끝까지 진행한다", asyn
 
   await host.screenshot({ path: "screenshots/host-4-final.png" });
 
-  // 오늘 참여 인원 합계가 늘어났다
-  await expect(host.locator("#today")).toContainText("오늘 참여 인원 합계");
-  const today = await host.locator("#today").textContent();
-  expect(Number(today.match(/(\d+)명/)[1])).toBeGreaterThanOrEqual(3);
-
   for (const s of students) await s.ctx.close();
   await ctxHost.close();
 });

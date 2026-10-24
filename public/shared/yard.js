@@ -22,6 +22,7 @@ export function createYard(canvas, opts = {}){
     target: null,
     others: new Map(),            // id -> {px,py,nx,ny,t0,moving}
     meta: new Map(),              // id -> {name,color}
+    showOthers: true,             // false 면 다른 학생을 그리지 않는다(위치는 계속 받는다)
     myId: null,
     myName: opts.name || "나",
     myColor: opts.color || "red",
@@ -46,7 +47,9 @@ export function createYard(canvas, opts = {}){
   }
 
   const MOVE_KEYS = ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","a","d","w","s"];
-  const keyName = e => (e.key.length === 1 ? e.key.toLowerCase() : e.key);
+  // W A S D 는 글자가 아니라 키 자리(e.code)로 읽는다. 한글 입력 상태에서 W 가 'ㅈ' 으로 들어와도 걷게.
+  const WASD = { KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d" };
+  const keyName = e => WASD[e.code] || (e.key.length === 1 ? e.key.toLowerCase() : e.key);
 
   function onKeyDown(e){
     if (spectator || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -56,14 +59,26 @@ export function createYard(canvas, opts = {}){
   }
   function onKeyUp(e){ keys.delete(keyName(e)); }
 
-  // 화면 방향 버튼(태블릿용)
-  function bindPad(container){
-    container?.querySelectorAll("[data-dir]").forEach(b => {
-      const on = e => { e.preventDefault(); if (S.frozen) return; keys.add("pad-" + b.dataset.dir); S.target = null; };
-      const off = () => keys.delete("pad-" + b.dataset.dir);
-      b.onpointerdown = on; b.onpointerup = off; b.onpointerleave = off; b.onpointercancel = off;
-    });
+  // 화면 조이스틱(폰·태블릿용). 민 방향과 세기(0~1)를 S.joy 에 담는다. 많이 밀수록 빨리 걷는다.
+  function bindJoystick(joy){
+    if (!joy) return;
+    const knob = joy.firstElementChild, REACH = 46, DEAD = 8;
+    const move = e => {
+      const r = joy.getBoundingClientRect();
+      let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      const d = Math.hypot(dx, dy);
+      if (d > REACH){ dx *= REACH / d; dy *= REACH / d; }
+      knob.style.transform = `translate(${dx}px,${dy}px)`;
+      S.joy = d < DEAD ? null : { x: dx / REACH, y: dy / REACH };
+      S.target = null;
+    };
+    const end = () => { S.joy = null; knob.style.transform = ""; joy.classList.remove("on"); };
+    joyReset = end;
+    joy.onpointerdown = e => { if (S.frozen) return; e.preventDefault(); joy.setPointerCapture(e.pointerId); joy.classList.add("on"); move(e); };
+    joy.onpointermove = e => { if (joy.hasPointerCapture(e.pointerId) && !S.frozen) move(e); };
+    joy.onpointerup = end; joy.onpointercancel = end; joy.onlostpointercapture = end;
   }
+  let joyReset = () => { S.joy = null; };
 
   /* ---------------- 서버에서 온 위치 ---------------- */
   function applyPositions({ p }){
@@ -91,15 +106,18 @@ export function createYard(canvas, opts = {}){
 
     if (!spectator && !S.frozen){
       let dx = 0, dy = 0;
-      if (keys.has("ArrowLeft") || keys.has("a") || keys.has("pad-left")) dx -= 1;
-      if (keys.has("ArrowRight") || keys.has("d") || keys.has("pad-right")) dx += 1;
-      if (keys.has("ArrowUp") || keys.has("w") || keys.has("pad-up")) dy -= 1;
-      if (keys.has("ArrowDown") || keys.has("s") || keys.has("pad-down")) dy += 1;
+      if (keys.has("ArrowLeft") || keys.has("a")) dx -= 1;
+      if (keys.has("ArrowRight") || keys.has("d")) dx += 1;
+      if (keys.has("ArrowUp") || keys.has("w")) dy -= 1;
+      if (keys.has("ArrowDown") || keys.has("s")) dy += 1;
       const before = { ...S.me };
       if (dx || dy){
         S.target = null;
         const l = Math.hypot(dx, dy);
         S.me = { ...clampYard({ x: S.me.x + dx/l*SPEED*dt, y: S.me.y + dy/l*SPEED*dt }), moving: true };
+      } else if (S.joy){
+        S.target = null;
+        S.me = { ...clampYard({ x: S.me.x + S.joy.x*SPEED*dt, y: S.me.y + S.joy.y*SPEED*dt }), moving: true };
       } else if (S.target){
         const vx = S.target.x - S.me.x, vy = S.target.y - S.me.y, d = Math.hypot(vx, vy);
         if (d < 4){ S.target = null; S.me.moving = false; }
@@ -148,7 +166,7 @@ export function createYard(canvas, opts = {}){
     // 다른 학생 → 조금 흐리게, 작게. 아래쪽에 있는 사람을 나중에 그려 겹침이 자연스럽게.
     const now = performance.now();
     const list = [];
-    for (const [id, o] of S.others){
+    for (const [id, o] of S.showOthers ? S.others : []){
       const m = S.meta.get(id); if (!m) continue;
       const p = lerpPos(o, now);
       list.push({ y: p.y, fn: () => drawPlayer(ctx, { ...p, moving: o.moving }, { mine: false, t: S.t, name: m.name, colorCss: colorCss(m.color) }) });
@@ -165,8 +183,8 @@ export function createYard(canvas, opts = {}){
       if (!spectator){ window.addEventListener("keydown", onKeyDown); window.addEventListener("keyup", onKeyUp); window.addEventListener("blur", () => keys.clear()); }
       S.raf = requestAnimationFrame(step);
     },
-    stop(){ cancelAnimationFrame(S.raf); S.raf = 0; keys.clear(); },
-    bindPad,
+    stop(){ cancelAnimationFrame(S.raf); S.raf = 0; keys.clear(); joyReset(); },
+    bindJoystick,
     applyPositions,
     on(name, fn){ handlers[name] = fn; },
     setMe({ id, name, color }){ if (id) S.myId = id; if (name) S.myName = name; if (color) S.myColor = color; },
@@ -176,12 +194,13 @@ export function createYard(canvas, opts = {}){
       S.answered = false; S.answer = undefined; S.picked = undefined; S.counts = null;
       S.hintOpen = false; S.frozen = spectator; S.target = null; S.lastZoneKey = undefined;
       S.me = { ...START, moving: false };
-      keys.clear();
+      keys.clear(); joyReset();
     },
-    setReveal({ answer, picked }){ S.answered = true; S.answer = answer; S.picked = picked; S.frozen = true; S.target = null; keys.clear(); },
+    setReveal({ answer, picked }){ S.answered = true; S.answer = answer; S.picked = picked; S.frozen = true; S.target = null; keys.clear(); joyReset(); },
     setCounts(counts){ S.counts = counts; },
+    setShowOthers(v){ S.showOthers = !!v; },
     setHintOpen(v){ S.hintOpen = v; },
-    freeze(v){ S.frozen = !!v; if (v) keys.clear(); },
+    freeze(v){ S.frozen = !!v; if (v){ keys.clear(); joyReset(); } },
     clearZones(){ S.zones = []; S.counts = null; S.answered = false; },
     me(){ return { ...S.me }; },
     zoneHere(){ return zoneAt(S.me, S.zones); }
