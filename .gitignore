@@ -8,3 +8,6 @@ screenshots/
 
 
 public/config.js
+
+# Visual Studio
+.vs/

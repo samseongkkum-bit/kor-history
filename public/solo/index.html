@@ -94,16 +94,19 @@ input[type=text]:focus{outline:3px solid var(--hwang); outline-offset:2px}
 canvas{display:block; width:100%; height:auto; cursor:pointer}
 .stage:focus-visible{outline:3px solid var(--hwang); outline-offset:3px}
 
-.controls{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--s4); align-items:start}
+.controls{display:grid; grid-template-columns:minmax(0,1fr); gap:var(--s4); align-items:start}
 .status{display:flex; flex-direction:column; gap:var(--s2); min-width:0}
+/* 조이스틱: 손가락으로 쓰는 기기(폰·태블릿)에서만 보인다. 컴퓨터는 W A S D. */
+.joy{display:none; position:relative; width:136px; height:136px; border-radius:50%; background:var(--hanji); border:2px solid var(--hairline); box-shadow:inset 0 0 0 10px var(--hanji-deep); touch-action:none; user-select:none; -webkit-user-select:none}
+.joy .knob{position:absolute; left:50%; top:50%; width:60px; height:60px; margin:-30px 0 0 -30px; border-radius:50%; background:var(--cheong); border:3px solid var(--hanji); box-shadow:0 2px 6px rgba(0,0,0,.25); pointer-events:none}
+.joy.on .knob{background:var(--hwang)}
+@media (hover:none) and (pointer:coarse){
+  .joy{display:block}
+  .controls{grid-template-columns:minmax(0,1fr) auto; align-items:center}
+}
 .where{font-size:20px; line-height:28px}
 .where b{font-family:var(--serif)}
 .hint{border:1px dashed var(--hwang); border-radius:var(--r-md); padding:var(--s2) var(--s4); background:var(--hanji)}
-.pad{display:grid; grid-template-columns:repeat(3,56px); grid-template-rows:repeat(2,56px); gap:6px}
-.pad button{font:inherit; font-size:22px; border-radius:var(--r-md); border:2px solid var(--hairline); background:var(--hanji); color:var(--meok); cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none}
-.pad button:active{background:var(--hanji-deep)}
-.pad .up{grid-column:2}
-.pad .left{grid-column:1; grid-row:2} .pad .down{grid-column:2; grid-row:2} .pad .right{grid-column:3; grid-row:2}
 
 .actions{display:flex; gap:var(--s4); flex-wrap:wrap}
 .btn{font:inherit; font-size:18px; line-height:24px; font-weight:700; min-height:52px; padding:var(--s4) var(--s6); border-radius:var(--r-md); cursor:pointer; border:2px solid transparent}
@@ -146,8 +149,6 @@ footer{text-align:center}
   .display{font-size:38px; line-height:46px}
   .question{font-size:22px; line-height:32px}
   .board{padding:var(--s6) var(--s4)}
-  .controls{grid-template-columns:1fr}
-  .pad{justify-self:center}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 @keyframes pop{from{transform:scale(.9); opacity:.4} to{transform:none; opacity:1}}
@@ -161,44 +162,75 @@ footer{text-align:center}
     <span class="chip" id="status">혼자 하기(비상용)</span>
   </div>
   <main id="app" aria-live="polite"></main>
-  <footer class="cap muted"><a href="/" style="color:var(--cheong)">다른 화면 고르기</a> · 방향키·WASD로 걷기 · 마당을 눌러도 그쪽으로 걸어가요 · 스페이스로 결정</footer>
+  <footer class="cap muted"><a href="/" style="color:var(--cheong)">다른 화면 고르기</a> · 컴퓨터는 W A S D(방향키도 돼요) · 폰은 조이스틱 · 마당을 눌러도 그쪽으로 걸어가요 · 스페이스로 결정</footer>
 </div>
 
 <script>
 const QUIZ = {
   elem: {
-    name: "초등부", kind: "O/X 퀴즈", desc: "태극기, 한글, 명절처럼 생활 속에서 만나는 우리 역사",
+    name: "초등부", kind: "O/X 퀴즈", desc: "태극기, 한글, 명절, 전통 놀이처럼 생활 속에서 만나는 우리 역사",
     questions: [
-      {t:"ox", q:"우리나라 국기의 이름은 '태극기'이다.", a:"O", hint:"가운데에 빨간색과 파란색 동그라미가 있어요.", ex:"태극기는 가운데 태극 무늬와 네 귀퉁이의 검은 막대(4괘)로 이루어져 있어요."},
-      {t:"ox", q:"한글을 만든 왕은 세종대왕이다.", a:"O", hint:"10월 9일 한글날과 관련 있는 왕이에요.", ex:"세종대왕은 백성이 쉽게 글을 쓰도록 훈민정음(한글)을 만들었어요."},
-      {t:"ox", q:"우리나라의 나라꽃은 해바라기이다.", a:"X", hint:"'끝없이 피고 또 핀다'는 뜻의 이름을 가진 꽃이에요.", ex:"우리나라의 나라꽃은 무궁화예요."},
-      {t:"ox", q:"광복절은 3월 1일이다.", a:"X", hint:"여름방학 즈음에 있는 기념일이에요.", ex:"광복절은 8월 15일이에요. 3월 1일은 삼일절이에요."},
-      {t:"ox", q:"설날에는 송편을 먹는다.", a:"X", hint:"설날 음식을 먹으면 한 살 더 먹는다고 해요.", ex:"설날에는 떡국을 먹어요. 송편은 추석에 먹는 음식이에요."},
-      {t:"ox", q:"옛날 집에서 방바닥을 따뜻하게 데우던 방법을 '온돌'이라고 한다.", a:"O", hint:"아궁이에 불을 때면 방바닥이 뜨끈해져요.", ex:"온돌은 아궁이의 열기가 방바닥 아래로 지나가며 방을 데우는 우리 고유의 난방법이에요."},
-      {t:"ox", q:"독도는 우리나라 땅이다.", a:"O", hint:"동해에 있는 섬이에요.", ex:"독도는 경상북도 울릉군에 속한 우리나라 섬이에요."},
-      {t:"ox", q:"거북선을 이끌고 바다에서 왜군과 싸운 장군은 강감찬이다.", a:"X", hint:"광화문 광장에 동상이 있는 장군이에요.", ex:"거북선으로 왜군을 물리친 장군은 이순신이에요. 강감찬은 고려 때 거란군을 물리쳤어요."},
-      {t:"ox", q:"우리나라의 나라 노래(국가)는 '아리랑'이다.", a:"X", hint:"\"동해 물과 백두산이~\"로 시작해요.", ex:"우리나라의 국가는 애국가예요."},
-      {t:"ox", q:"경주에 있는 첨성대는 옛날에 별을 관찰하던 곳이다.", a:"O", hint:"이름에 '별(星)'이라는 글자가 들어 있어요.", ex:"첨성대는 신라 시대에 하늘과 별을 관찰하던 천문대예요."},
-      {t:"ox", q:"추석은 음력 8월 15일이다.", a:"O", hint:"일 년 중 보름달이 가장 크고 둥글게 뜨는 날이에요.", ex:"추석은 음력 8월 15일로, 햇곡식과 송편으로 차례를 지내요."},
-      {t:"ox", q:"한글날은 8월 15일이다.", a:"X", hint:"가을, 10월에 있는 기념일이에요.", ex:"한글날은 10월 9일이에요. 8월 15일은 광복절이에요."},
-      {t:"ox", q:"우리나라의 전통 옷은 '기모노'이다.", a:"X", hint:"설날이나 추석에 곱게 차려입는 옷이에요.", ex:"우리나라의 전통 옷은 한복이에요. 기모노는 일본의 전통 옷이에요."},
-      {t:"ox", q:"김치는 배추나 무 같은 채소를 소금에 절여 양념해 만든 음식이다.", a:"O", hint:"겨울을 앞두고 온 가족이 모여 '김장'을 해요.", ex:"김치는 채소를 절이고 양념해 발효시킨 우리 고유의 음식이에요."},
-      {t:"ox", q:"조선의 수도 한양은 지금의 서울이다.", a:"O", hint:"경복궁이 있는 도시를 떠올려 보세요.", ex:"이성계는 조선을 세운 뒤 수도를 한양으로 옮겼고, 한양이 지금의 서울이에요."},
-      {t:"ox", q:"고조선을 세운 사람은 주몽이다.", a:"X", hint:"곰이 사람이 되었다는 이야기와 관련 있어요.", ex:"고조선은 단군왕검이 세웠어요. 주몽은 고구려를 세웠어요."},
-      {t:"ox", q:"윷놀이는 주사위 여섯 개를 던져서 하는 놀이이다.", a:"X", hint:"'도, 개, 걸, 윷, 모'를 떠올려 보세요.", ex:"윷놀이는 나무 막대 네 개(윷가락)를 던져서 하는 놀이예요."},
-      {t:"ox", q:"세종대왕 때 장영실이 해시계와 물시계를 만들었다.", a:"O", hint:"장영실은 세종대왕이 아낀 과학자예요.", ex:"장영실은 해시계 앙부일구와 저절로 시간을 알리는 물시계 자격루를 만들었어요."},
-      {t:"ox", q:"옛날 사람들이 짚으로 엮어 신던 신발을 '짚신'이라고 한다.", a:"O", hint:"신발 이름에 재료가 그대로 들어 있어요.", ex:"짚신은 볏짚을 엮어 만든 신발로, 옛날 사람들이 흔히 신었어요."},
-      {t:"ox", q:"경복궁은 신라의 궁궐이다.", a:"X", hint:"서울 광화문 뒤에 있는 궁궐이에요.", ex:"경복궁은 조선을 세운 뒤 한양에 지은 조선의 궁궐이에요."},
-      {t:"ox", q:"삼일절 같은 국경일에는 집집마다 태극기를 단다.", a:"O", hint:"나라의 기쁜 날을 함께 기념하는 방법이에요.", ex:"삼일절, 광복절, 개천절, 한글날 같은 국경일에는 태극기를 달아요."},
-      {t:"ox", q:"만 원짜리 지폐에 그려진 인물은 이순신이다.", a:"X", hint:"한글을 만든 왕이에요.", ex:"만 원짜리 지폐에는 세종대왕이 그려져 있어요. 이순신은 백 원짜리 동전에 있어요."},
-      {t:"ox", q:"유관순은 3·1 운동 때 만세를 외친 독립운동가이다.", a:"O", hint:"태극기를 나눠 주며 아우내 장터에서 만세를 불렀어요.", ex:"유관순은 고향 천안 아우내 장터에서 만세 운동을 이끈 독립운동가예요."},
-      {t:"ox", q:"탈을 쓰고 춤추며 이야기를 펼치는 놀이를 '탈춤'이라고 한다.", a:"O", hint:"얼굴에 쓰는 것을 '탈'이라고 해요.", ex:"탈춤은 탈을 쓰고 춤과 노래, 이야기로 웃음을 주던 우리 전통 놀이예요."},
-      {t:"ox", q:"지붕을 기와로 덮은 집을 '초가집'이라고 한다.", a:"X", hint:"초가집의 지붕은 볏짚으로 덮어요.", ex:"기와로 덮은 집은 기와집이에요. 볏짚으로 지붕을 덮은 집이 초가집이에요."},
-      {t:"ox", q:"거북선은 배 위를 덮개로 덮어 적의 공격을 막은 배이다.", a:"O", hint:"거북의 등딱지를 닮았어요.", ex:"거북선은 등을 덮개로 덮고 뾰족한 쇠못을 꽂아 적이 올라오지 못하게 했어요."},
-      {t:"ox", q:"한글을 처음 만들었을 때의 이름은 '훈민정음'이다.", a:"O", hint:"'백성을 가르치는 바른 소리'라는 뜻이에요.", ex:"세종대왕은 한글을 만들고 훈민정음이라는 이름을 붙였어요."},
-      {t:"ox", q:"다보탑과 석가탑은 경주 불국사에 있다.", a:"O", hint:"신라의 수도였던 도시에 있는 절이에요.", ex:"다보탑과 석가탑은 신라 때 세운 탑으로, 경주 불국사에 나란히 서 있어요."},
-      {t:"ox", q:"동짓날에는 송편을 먹는다.", a:"X", hint:"빨간 팥으로 만든 음식이 나쁜 기운을 쫓는다고 믿었어요.", ex:"동짓날에는 팥죽을 먹어요. 송편은 추석 음식이에요."},
-      {t:"ox", q:"강강술래는 혼자서 추는 춤이다.", a:"X", hint:"보름달 아래에서 여럿이 손을 잡아요.", ex:"강강술래는 여러 사람이 손을 잡고 둥글게 돌며 노래하고 춤추는 놀이예요."}
+      // 혼자 하기 초등부: 중간 난이도(초등 3~4학년 사회 수준) 60문제. 진행자·학생 화면의 초등부는 Supabase 의 문제를 쓴다.
+      {t:"ox", q:"우리나라 국기의 이름은 태극기이다.", a:"O", hint:"국경일에 집집마다 다는 깃발이에요.", ex:"우리나라 국기는 태극기예요."},
+      {t:"ox", q:"태극기 가운데 태극 무늬는 빨간색과 파란색으로 되어 있다.", a:"O", hint:"태극기 한가운데 동그라미를 떠올려 보세요.", ex:"태극 무늬는 빨강과 파랑이 어우러진 동그라미예요."},
+      {t:"ox", q:"태극기의 네 귀퉁이에는 별이 그려져 있다.", a:"X", hint:"검은색 막대 모양이에요.", ex:"태극기 네 귀퉁이에는 검은 막대로 된 4괘(건·곤·감·리)가 있어요."},
+      {t:"ox", q:"우리나라의 나라꽃은 무궁화이다.", a:"O", hint:"애국가에도 나오는 꽃이에요.", ex:"무궁화는 '끝없이 피는 꽃'이라는 뜻을 가진 우리나라 꽃이에요."},
+      {t:"ox", q:"우리나라의 나라꽃은 해바라기이다.", a:"X", hint:"'무'로 시작하는 꽃이에요.", ex:"우리나라의 나라꽃은 무궁화예요."},
+      {t:"ox", q:"우리나라의 국가(나라 노래)는 '아리랑'이다.", a:"X", hint:"'동해 물과 백두산이~'로 시작해요.", ex:"우리나라의 국가는 애국가예요. 아리랑은 대표 민요예요."},
+      {t:"ox", q:"한글을 만든 왕은 세종대왕이다.", a:"O", hint:"만 원짜리 지폐에 그려진 왕이에요.", ex:"세종대왕은 백성이 쉽게 글을 쓰도록 한글을 만들었어요."},
+      {t:"ox", q:"한글을 처음 만들었을 때의 이름은 '훈민정음'이다.", a:"O", hint:"'백성을 가르치는 바른 소리'라는 뜻이에요.", ex:"세종대왕은 1443년 훈민정음을 만들고 1446년 널리 알렸어요."},
+      {t:"ox", q:"한글날은 10월 9일이다.", a:"O", hint:"가을에 있는 국경일이에요.", ex:"한글날은 10월 9일로, 한글을 만들어 널리 알린 것을 기념해요."},
+      {t:"ox", q:"한글날은 8월 15일이다.", a:"X", hint:"8월 15일은 광복절이에요.", ex:"한글날은 10월 9일이에요."},
+      {t:"ox", q:"광복절은 우리나라가 일본에 빼앗긴 나라를 되찾은 것을 기념하는 날이다.", a:"O", hint:"'광복'은 빛을 되찾았다는 뜻이에요.", ex:"광복절은 8월 15일로, 1945년 나라를 되찾은 것을 기념해요."},
+      {t:"ox", q:"광복절은 3월 1일이다.", a:"X", hint:"3월 1일은 삼일절이에요.", ex:"광복절은 8월 15일이에요."},
+      {t:"ox", q:"삼일절은 1919년 3월 1일 만세 운동을 기념하는 날이다.", a:"O", hint:"이름에 날짜가 들어 있어요.", ex:"삼일절에는 온 겨레가 독립 만세를 외친 3·1 운동을 기념해요."},
+      {t:"ox", q:"유관순은 3·1 운동 때 만세를 외친 독립운동가이다.", a:"O", hint:"태극기를 들고 '대한 독립 만세'를 외쳤어요.", ex:"유관순은 고향 천안에서 만세 운동을 이끈 독립운동가예요."},
+      {t:"ox", q:"독도는 우리나라 땅이다.", a:"O", hint:"동해에 있는 우리 섬이에요.", ex:"독도는 동해에 있는 우리나라의 섬이에요."},
+      {t:"ox", q:"조선의 수도 한양은 지금의 서울이다.", a:"O", hint:"경복궁이 있는 도시예요.", ex:"조선은 한양을 수도로 정했고, 한양이 지금의 서울이에요."},
+      {t:"ox", q:"경복궁은 조선의 왕이 살던 궁궐이다.", a:"O", hint:"서울에 있는 큰 궁궐이에요.", ex:"경복궁은 조선을 세운 뒤 처음 지은 궁궐이에요."},
+      {t:"ox", q:"경복궁은 신라의 궁궐이다.", a:"X", hint:"한양(서울)에 지었어요.", ex:"경복궁은 조선의 궁궐이에요. 신라의 수도는 경주였어요."},
+      {t:"ox", q:"거북선을 이끌고 바다에서 왜군과 싸운 장군은 이순신이다.", a:"O", hint:"백 원짜리 동전에 있는 장군이에요.", ex:"이순신 장군은 임진왜란 때 거북선을 이끌고 바다에서 나라를 지켰어요."},
+      {t:"ox", q:"거북선을 이끌고 바다에서 싸운 사람은 세종대왕이다.", a:"X", hint:"바다를 지킨 장군이에요.", ex:"거북선을 이끈 사람은 이순신 장군이에요. 세종대왕은 한글을 만든 왕이에요."},
+      {t:"ox", q:"세종대왕 때 장영실은 해시계와 물시계를 만들었다.", a:"O", hint:"시간을 알려 주는 기구예요.", ex:"장영실은 해시계(앙부일구)와 물시계(자격루)를 만든 과학자예요."},
+      {t:"ox", q:"측우기는 비가 내린 양을 재는 기구이다.", a:"O", hint:"이름의 '우(雨)'는 비라는 뜻이에요.", ex:"세종 때 만든 측우기로 전국의 비 내린 양을 쟀어요."},
+      {t:"ox", q:"측우기는 바람의 세기를 재는 기구이다.", a:"X", hint:"이름의 '우(雨)'는 비라는 뜻이에요.", ex:"측우기는 비가 내린 양을 재는 기구예요."},
+      {t:"ox", q:"단군 이야기에서 쑥과 마늘을 먹고 사람이 된 동물은 곰이다.", a:"O", hint:"동굴에서 끝까지 참고 견딘 동물이에요.", ex:"곰은 끝까지 견뎌 웅녀가 되었고, 웅녀의 아들이 단군왕검이에요."},
+      {t:"ox", q:"단군 이야기에서 사람이 된 동물은 호랑이이다.", a:"X", hint:"호랑이는 참지 못하고 뛰쳐나갔어요.", ex:"끝까지 견딘 곰이 사람이 되었어요."},
+      {t:"ox", q:"고조선을 세운 사람은 주몽이다.", a:"X", hint:"곰 이야기에 나오는 분이에요.", ex:"고조선은 단군왕검이 세웠어요. 주몽은 고구려를 세웠어요."},
+      {t:"ox", q:"고구려, 백제, 신라가 함께 있던 때를 '삼국 시대'라고 한다.", a:"O", hint:"나라가 몇 개였는지 세어 보세요.", ex:"세 나라가 함께 있던 때를 삼국 시대라고 해요."},
+      {t:"ox", q:"경주에 있는 첨성대는 옛날에 별을 관찰하던 곳이다.", a:"O", hint:"'첨성'은 별을 본다는 뜻이에요.", ex:"첨성대는 신라 때 하늘과 별을 관찰하던 곳이에요."},
+      {t:"ox", q:"불국사는 서울에 있는 절이다.", a:"X", hint:"신라의 수도였던 도시에 있어요.", ex:"불국사는 경주에 있는 신라의 절로, 다보탑과 석가탑이 있어요."},
+      {t:"ox", q:"고려청자는 하얀색 도자기이다.", a:"X", hint:"이름에 '푸를 청(靑)' 자가 있어요.", ex:"고려청자는 맑은 푸른빛이 도는 고려의 도자기예요."},
+      {t:"ox", q:"팔만대장경은 종이에 붓으로 쓴 책이다.", a:"X", hint:"나무판에 글자를 새겼어요.", ex:"팔만대장경은 8만 장이 넘는 나무판에 불경을 새긴 것으로, 해인사에 있어요."},
+      {t:"ox", q:"설날에는 떡국을 먹는다.", a:"O", hint:"한 그릇 먹으면 한 살 더 먹는다고 해요.", ex:"설날 아침에는 떡국을 먹어요."},
+      {t:"ox", q:"설날에는 송편을 먹는다.", a:"X", hint:"송편은 가을 명절 음식이에요.", ex:"설날에는 떡국을, 추석에는 송편을 먹어요."},
+      {t:"ox", q:"추석에는 햅쌀로 송편을 빚어 먹는다.", a:"O", hint:"반달 모양의 떡이에요.", ex:"추석에는 그해 거둔 햅쌀로 송편을 빚어요."},
+      {t:"ox", q:"추석은 음력 8월 15일이다.", a:"O", hint:"보름달이 가장 밝은 날이에요.", ex:"추석(한가위)은 음력 8월 15일이에요."},
+      {t:"ox", q:"동지에는 팥죽을 먹는다.", a:"O", hint:"일 년 중 밤이 가장 긴 날이에요.", ex:"동지에는 붉은 팥죽을 먹으며 나쁜 기운을 쫓았어요."},
+      {t:"ox", q:"정월 대보름에는 호두나 땅콩 같은 부럼을 깨물어 먹는다.", a:"O", hint:"한 해 동안 부스럼이 나지 말라는 뜻이에요.", ex:"정월 대보름에는 부럼을 깨물고 오곡밥과 나물을 먹어요."},
+      {t:"ox", q:"설날에 웃어른께 드리는 절을 '세배'라고 한다.", a:"O", hint:"절을 하면 세뱃돈을 받기도 해요.", ex:"새해에 웃어른께 드리는 절을 세배라고 해요."},
+      {t:"ox", q:"설날에 웃어른께 드리는 절을 '차례'라고 한다.", a:"X", hint:"차례는 조상께 지내는 의식이에요.", ex:"웃어른께 드리는 절은 세배, 조상께 음식을 차려 올리는 것은 차례예요."},
+      {t:"ox", q:"한복은 우리나라의 전통 옷이다.", a:"O", hint:"명절에 입는 고운 옷이에요.", ex:"한복은 저고리와 치마·바지로 이루어진 우리 전통 옷이에요."},
+      {t:"ox", q:"우리나라의 전통 옷은 '기모노'이다.", a:"X", hint:"기모노는 일본의 옷이에요.", ex:"우리나라의 전통 옷은 한복이에요."},
+      {t:"ox", q:"김치는 배추나 무를 소금에 절여 양념해 만든 음식이다.", a:"O", hint:"우리 밥상에 늘 오르는 반찬이에요.", ex:"김치는 채소를 절이고 양념해 만든 우리 음식이에요."},
+      {t:"ox", q:"옛날 집에서 방바닥을 따뜻하게 데우던 방법을 '온돌'이라고 한다.", a:"O", hint:"아궁이에 불을 때요.", ex:"온돌은 아궁이의 뜨거운 기운이 방바닥 밑을 지나며 방을 데우는 방법이에요."},
+      {t:"ox", q:"온돌은 방을 시원하게 만드는 방법이다.", a:"X", hint:"겨울에 방바닥이 뜨끈뜨끈해요.", ex:"온돌은 방바닥을 따뜻하게 데우는 방법이에요."},
+      {t:"ox", q:"지붕을 기와로 덮은 집을 '초가집'이라고 한다.", a:"X", hint:"초가집 지붕은 볏짚이에요.", ex:"기와로 덮은 집은 기와집, 볏짚으로 덮은 집은 초가집이에요."},
+      {t:"ox", q:"초가집은 지붕을 볏짚으로 덮은 집이다.", a:"O", hint:"벼를 거두고 남은 줄기예요.", ex:"초가집은 볏짚으로 지붕을 덮은 집이에요."},
+      {t:"ox", q:"옛날 사람들이 짚으로 엮어 신던 신발을 '짚신'이라고 한다.", a:"O", hint:"이름에 재료가 들어 있어요.", ex:"짚신은 볏짚으로 엮어 만든 신발이에요."},
+      {t:"ox", q:"옛날 아이들은 서당에서 훈장님께 글을 배웠다.", a:"O", hint:"이 마당에도 훈장님이 계셔요!", ex:"서당은 지금의 학교처럼 아이들이 글을 배우던 곳이에요."},
+      {t:"ox", q:"윷놀이는 주사위 여섯 개를 던져서 하는 놀이이다.", a:"X", hint:"윷가락을 던져요.", ex:"윷놀이는 윷가락 네 개를 던져서 하는 놀이예요."},
+      {t:"ox", q:"윷놀이에서 '모'가 나오면 다섯 칸을 간다.", a:"O", hint:"도·개·걸·윷·모 순서예요.", ex:"도는 한 칸, 개는 두 칸, 걸은 세 칸, 윷은 네 칸, 모는 다섯 칸이에요."},
+      {t:"ox", q:"제기차기는 손으로 공을 던져 받는 놀이이다.", a:"X", hint:"이름에 '차기'가 들어 있어요.", ex:"제기차기는 제기를 발로 차서 떨어뜨리지 않는 놀이예요."},
+      {t:"ox", q:"연날리기는 주로 한여름에 하는 놀이이다.", a:"X", hint:"찬 바람이 부는 설날 무렵이에요.", ex:"연날리기는 주로 겨울, 설날부터 정월 대보름까지 즐겼어요."},
+      {t:"ox", q:"강강술래는 혼자서 추는 춤이다.", a:"X", hint:"보름달 아래에서 여럿이 손을 잡아요.", ex:"강강술래는 여러 사람이 손을 잡고 둥글게 돌며 노래하고 춤추는 놀이예요."},
+      {t:"ox", q:"탈을 쓰고 춤추며 이야기를 펼치는 놀이를 '탈춤'이라고 한다.", a:"O", hint:"얼굴에 쓰는 것이 이름에 들어 있어요.", ex:"탈춤은 탈을 쓰고 춤과 이야기로 세상을 재미있게 풍자하는 놀이예요."},
+      {t:"ox", q:"씨름은 공을 차서 골을 넣는 운동이다.", a:"X", hint:"샅바를 잡고 상대를 넘어뜨려요.", ex:"씨름은 두 사람이 샅바를 잡고 힘과 기술을 겨루는 전통 운동이에요."},
+      {t:"ox", q:"가야금은 입으로 불어서 소리를 내는 악기이다.", a:"X", hint:"줄을 손가락으로 뜯어요.", ex:"가야금은 줄을 뜯어 소리를 내는 우리 전통 악기예요."},
+      {t:"ox", q:"아리랑은 우리나라의 대표 민요이다.", a:"O", hint:"'아리랑 아리랑 아라리요~'", ex:"아리랑은 지역마다 여러 가지가 있는 우리나라 대표 민요예요."},
+      {t:"ox", q:"만 원짜리 지폐에 그려진 인물은 세종대왕이다.", a:"O", hint:"한글을 만든 왕이에요.", ex:"만 원권에는 세종대왕이 그려져 있어요."},
+      {t:"ox", q:"만 원짜리 지폐에 그려진 인물은 이순신이다.", a:"X", hint:"한글을 만든 왕이에요.", ex:"만 원권에는 세종대왕이 있어요. 이순신 장군은 백 원 동전에 있어요."},
+      {t:"ox", q:"백 원짜리 동전에는 세종대왕이 새겨져 있다.", a:"X", hint:"거북선과 함께 떠오르는 장군이에요.", ex:"백 원 동전에는 이순신 장군이 새겨져 있어요."}
     ]
   },
   mid: {
@@ -518,14 +550,16 @@ const QUIZ = {
   }
 };
 
+// min: 칭호를 받는 최소 정답 수(10문제 기준). lo~hi: 그 칭호의 점수 구간(100점 만점, 한 문제 10점).
 const RANKS = [
-  {min:0,  title:"천민", say:"이제 막 역사 여행을 시작했어요. 다시 풀면 금방 올라갈 수 있어요!"},
-  {min:3,  title:"양민", say:"조금씩 알아가고 있어요. 해설을 다시 읽어 보면 더 잘할 수 있어요."},
-  {min:5,  title:"평민", say:"절반 넘게 맞혔어요! 우리 역사와 꽤 친해졌어요."},
-  {min:7,  title:"귀족", say:"대단해요! 역사 이야기를 많이 알고 있네요."},
-  {min:9,  title:"조선의 학자", say:"거의 다 맞혔어요! 집현전 학자도 놀랄 실력이에요."},
-  {min:10, title:"왕", say:"모두 맞혔어요! 오늘 부스의 임금님이에요."}
+  {min:0,  lo:0,   hi:20,  title:"천민", say:"이제 막 역사 여행을 시작했어요. 다시 풀면 금방 올라갈 수 있어요!"},
+  {min:3,  lo:30,  hi:40,  title:"양민", say:"조금씩 알아가고 있어요. 해설을 다시 읽어 보면 더 잘할 수 있어요."},
+  {min:5,  lo:50,  hi:60,  title:"평민", say:"절반 넘게 맞혔어요! 우리 역사와 꽤 친해졌어요."},
+  {min:7,  lo:70,  hi:80,  title:"귀족", say:"대단해요! 역사 이야기를 많이 알고 있네요."},
+  {min:9,  lo:90,  hi:90,  title:"조선의 학자", say:"거의 다 맞혔어요! 집현전 학자도 놀랄 실력이에요."},
+  {min:10, lo:100, hi:100, title:"왕", say:"모두 맞혔어요! 오늘 부스의 임금님이에요."}
 ];
+const POINTS_PER_RIGHT = 10;   // 한 문제 맞힐 때마다 10점(학생 화면과 같다)
 
 const NUMS = ["①","②","③","④"];
 const ROUND = 10;
@@ -547,13 +581,24 @@ const saCorrect = (q, text) => { const n = normAnswer(text); return n !== "" && 
 const cv = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 // 문제를 한 바퀴 다 돌 때까지 같은 문제가 다시 나오지 않게 한다.
-const used = Object.fromEntries(Object.keys(QUIZ).map(k => [k, []]));
+// 이미 낸 문제는 이 기기에 저장해 두어, 새로고침하거나 다시 들어와도 이어진다.
+const USED_KEY = "hqs.used";
+const used = (() => {
+  const blank = Object.fromEntries(Object.keys(QUIZ).map(k => [k, []]));
+  try {
+    const saved = JSON.parse(localStorage.getItem(USED_KEY) || "{}");
+    for(const k of Object.keys(blank)) if(Array.isArray(saved[k])) blank[k] = saved[k].filter(i => Number.isInteger(i) && i >= 0 && i < QUIZ[k].questions.length);
+  } catch {}
+  return blank;
+})();
+const saveUsed = () => { try { localStorage.setItem(USED_KEY, JSON.stringify(used)); } catch {} };
 function buildRound(level){
   const all = QUIZ[level].questions.map((_,k)=>k);
   const fresh = shuffle(all.filter(k => !used[level].includes(k)));
   let ids;
   if(fresh.length >= ROUND){ ids = fresh.slice(0, ROUND); used[level] = used[level].concat(ids); }
   else { const fill = shuffle(all.filter(k => !fresh.includes(k))).slice(0, ROUND - fresh.length); ids = shuffle(fresh.concat(fill)); used[level] = fill.slice(); }
+  saveUsed();
   return ids.map(k => {
     const q = QUIZ[level].questions[k];
     if(q.t !== "mc") return {...q};
@@ -733,12 +778,12 @@ function renderStart(){
           <span class="name">${QUIZ[k].name}</span>
           <span class="kind">${QUIZ[k].kind}</span>
           <span class="cap muted">${QUIZ[k].desc}</span>
-          <span class="go">${QUIZ[k].questions.length}문제 중 ${ROUND}문제 무작위 · 눌러서 시작 →</span>
+          <span class="go">총 ${ROUND}문제 · 눌러서 시작 →</span>
         </button>`).join("")}
     </div>
     <div class="howto">
-      <div><b>1</b><span>방향키나 화면 버튼으로 걷거나, 가고 싶은 곳을 눌러요.</span></div>
-      <div><b>2</b><span>모르겠으면 마당 구석의 <b style="font-size:inherit;color:var(--meok)">두루마리</b>에 가 보세요. 힌트가 나와요.</span></div>
+      <div><b>1</b><span>컴퓨터는 W A S D, 폰은 조이스틱으로 걸어요. 가고 싶은 곳을 눌러도 돼요.</span></div>
+      <div><b>2</b><span>모르겠으면 마당 구석의 <b style="font-size:inherit;color:var(--meok)">두루마리</b>를 눌러 보세요. 힌트가 나와요.</span></div>
       <div><b>3</b><span>정답 자리에 섰으면 기다리거나 "여기로 결정!"을 눌러요.</span></div>
     </div>
   </section>`;
@@ -784,7 +829,14 @@ function renderQuiz(){
 
   const stage = document.getElementById("stage"), cvs = document.getElementById("yard");
   const toYard = e => { const r = cvs.getBoundingClientRect(); return {x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height}; };
-  stage.onpointerdown = e => { if(S.picked!==undefined) return; const p = toYard(e); G.target = clampYard(p); stage.focus({preventScroll:true}); };
+  stage.onpointerdown = e => {
+    if(S.picked!==undefined) return;
+    const p = toYard(e);
+    stage.focus({preventScroll:true});
+    // 두루마리(와 그 아래 '힌트' 글자)를 클릭·터치하면 걸어가지 않고 바로 힌트를 연다
+    if(Math.abs(p.x-SCROLL.x) <= 40 && p.y >= SCROLL.y-34 && p.y <= SCROLL.y+50){ showHint(); return; }
+    G.target = clampYard(p);
+  };
   if(q.t === "sa") document.getElementById("ans")?.focus({preventScroll:true});
   else stage.focus({preventScroll:true});
   startLoop();
@@ -821,20 +873,11 @@ function renderBelow(){
           <button class="btn btn-secondary" type="button" id="hintBtn" ${S.hint?"hidden":""}>힌트 보기</button>
         </div>
       </div>
-      <div class="pad" aria-label="이동 버튼">
-        <button class="up" type="button" data-dir="up" aria-label="위로">▲</button>
-        <button class="left" type="button" data-dir="left" aria-label="왼쪽으로">◀</button>
-        <button class="down" type="button" data-dir="down" aria-label="아래로">▼</button>
-        <button class="right" type="button" data-dir="right" aria-label="오른쪽으로">▶</button>
-      </div>
+      <div class="joy" id="joy" aria-hidden="true"><span class="knob"></span></div>
     </div>`;
     document.getElementById("decide").onclick = () => decide(false);
     document.getElementById("hintBtn").onclick = showHint;
-    below.querySelectorAll("[data-dir]").forEach(b => {
-      const on = e => { e.preventDefault(); keys.add("pad-"+b.dataset.dir); G.target=null; };
-      const off = () => keys.delete("pad-"+b.dataset.dir);
-      b.onpointerdown = on; b.onpointerup = off; b.onpointerleave = off; b.onpointercancel = off;
-    });
+    bindJoystick(document.getElementById("joy"));
   } else {
     const right = q.t==="sa" ? saCorrect(q, S.picked) : S.picked === q.a, timeout = S.picked === null;
     const rightLabel = q.t==="ox" ? (q.a==="O"?"○ (맞아요)":"× (아니에요)") : q.t==="sa" ? q.a : `${NUMS[q.a]} ${q.c[q.a]}`;
@@ -855,6 +898,24 @@ function renderBelow(){
     </div>`;
     document.getElementById("nextBtn").onclick = next; decidedAt = performance.now();
   }
+}
+
+// 조이스틱을 민 방향과 세기(0~1)를 G.joy 에 담는다. 많이 밀수록 빨리 걷는다.
+function bindJoystick(joy){
+  const knob = joy.firstElementChild, REACH = 46, DEAD = 8;
+  const move = e => {
+    const r = joy.getBoundingClientRect();
+    let dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2);
+    const d = Math.hypot(dx, dy);
+    if(d > REACH){ dx *= REACH/d; dy *= REACH/d; }
+    knob.style.transform = `translate(${dx}px,${dy}px)`;
+    G.joy = d < DEAD ? null : {x:dx/REACH, y:dy/REACH};
+    G.target = null;
+  };
+  const end = () => { G.joy = null; knob.style.transform = ""; joy.classList.remove("on"); };
+  joy.onpointerdown = e => { if(S.picked !== undefined) return; e.preventDefault(); joy.setPointerCapture(e.pointerId); joy.classList.add("on"); move(e); };
+  joy.onpointermove = e => { if(joy.hasPointerCapture(e.pointerId)) move(e); };
+  joy.onpointerup = end; joy.onpointercancel = end; joy.onlostpointercapture = end;
 }
 
 function showHint(){
@@ -879,17 +940,16 @@ function step(now){
   } else if(S.picked === undefined){
     // 이동
     let dx = 0, dy = 0;
-    if(keys.has("ArrowLeft")||keys.has("a")||keys.has("pad-left")) dx -= 1;
-    if(keys.has("ArrowRight")||keys.has("d")||keys.has("pad-right")) dx += 1;
-    if(keys.has("ArrowUp")||keys.has("w")||keys.has("pad-up")) dy -= 1;
-    if(keys.has("ArrowDown")||keys.has("s")||keys.has("pad-down")) dy += 1;
+    if(keys.has("ArrowLeft")||keys.has("a")) dx -= 1;
+    if(keys.has("ArrowRight")||keys.has("d")) dx += 1;
+    if(keys.has("ArrowUp")||keys.has("w")) dy -= 1;
+    if(keys.has("ArrowDown")||keys.has("s")) dy += 1;
     const speed = 260;
     if(dx||dy){ G.target = null; const l = Math.hypot(dx,dy); G.p = clampYard({x:G.p.x+dx/l*speed*dt, y:G.p.y+dy/l*speed*dt}); G.moving = true; }
+    else if(G.joy){ G.target = null; G.p = clampYard({x:G.p.x+G.joy.x*speed*dt, y:G.p.y+G.joy.y*speed*dt}); G.moving = true; }
     else if(G.target){ const vx = G.target.x-G.p.x, vy = G.target.y-G.p.y, d = Math.hypot(vx,vy);
       if(d < 4){ G.target = null; G.moving = false; } else { const m = Math.min(d, speed*dt); G.p = {x:G.p.x+vx/d*m, y:G.p.y+vy/d*m}; G.moving = true; } }
     else G.moving = false;
-    // 힌트 두루마리
-    if(Math.hypot(G.p.x-SCROLL.x, G.p.y-SCROLL.y) < 46) showHint();
     // 위치 안내
     const z = currentZone(), where = document.getElementById("where"), dec = document.getElementById("decide");
     if(where){ const txt = z ? (S.round[S.i].t==="ox" ? `<b>${z.label}</b> 자리에 서 있어요.` : `<b>${z.label} ${esc(z.sub)}</b> 자리에 서 있어요.`) : "아직 자리를 고르지 않았어요.";
@@ -924,7 +984,7 @@ function decide(timeUp){
   if(!z && !timeUp) return;
   S.picked = z ? z.key : null;
   S.results.push(S.picked === S.round[S.i].a);
-  G.target = null; keys.clear();
+  G.target = null; G.joy = null; keys.clear();
   const sec = document.getElementById("tsec"); if(sec && timeUp) sec.textContent = "끝!";
   renderBelow();
 }
@@ -939,14 +999,14 @@ function next(){
 function renderResult(){
   stopLoop();
   const L = QUIZ[S.level], Q = S.round;
-  const score = S.results.filter(Boolean).length, r = rankOf(score);
+  const right = S.results.filter(Boolean).length, r = rankOf(right), points = right * POINTS_PER_RIGHT;
   statusChip.textContent = `${L.name} · 결과`;
   app.innerHTML = `
   <section class="board result">
-    <p class="muted">${player.name ? esc(player.name)+" 님, " : ""}${L.name} ${Q.length}문제 중</p>
-    <div class="score">${score}<small> / ${Q.length}</small></div>
+    <p class="muted">${player.name ? esc(player.name)+" 님, " : ""}${L.name} ${Q.length}문제 중 ${right}문제를 맞혔어요</p>
+    <div class="score">${points}<small>점</small></div>
     <div class="rank"><p class="muted">오늘의 칭호</p><div class="title">${r.title}</div><p>${r.say}</p></div>
-    <div class="ladder" aria-label="칭호 단계">${RANKS.map(x=>`<span class="${x===r?"on":""}">${x.title}</span>`).join("")}</div>
+    <div class="ladder" aria-label="칭호 단계">${RANKS.map(x=>`<span class="${x===r?"on":""}">${x.title} ${x.lo===x.hi?x.lo:`${x.lo}~${x.hi}`}점</span>`).join("")}</div>
     <div class="review">
       <p class="cap muted">문제별 결과</p>
       <ol>${Q.map((q,k)=>`<li><span class="m ${S.results[k]?"ok":"no"}">${S.results[k]?"○":"×"}</span><span>${k+1}. ${esc(q.q)}</span></li>`).join("")}</ol>
@@ -965,15 +1025,18 @@ document.getElementById("home").onclick = goHome;
 
 /* ---------------- 키보드 ---------------- */
 const MOVE = ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","a","d","w","s"];
+// W A S D 는 글자가 아니라 키 자리(e.code)로 읽는다. 한글 입력 상태에서 W 가 'ㅈ' 으로 들어와도 걷게.
+const WASD = {KeyW:"w", KeyA:"a", KeyS:"s", KeyD:"d"};
+const keyName = e => WASD[e.code] || (e.key.length === 1 ? e.key.toLowerCase() : e.key);
 document.addEventListener("keydown", e => {
   if(S.screen !== "quiz" || e.metaKey || e.ctrlKey || e.altKey) return;
   if(e.target && e.target.tagName === "INPUT") return;
-  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const k = keyName(e);
   if(MOVE.includes(k)){ if(S.picked === undefined){ keys.add(k); e.preventDefault(); } }
   else if((k === " " || k === "Enter") && S.picked === undefined){ e.preventDefault(); decide(false); }
   else if(k === "Enter" && S.picked !== undefined && !e.repeat && performance.now() - decidedAt > 400 && e.target.id !== "nextBtn"){ e.preventDefault(); next(); }
 });
-document.addEventListener("keyup", e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys.delete(k); });
+document.addEventListener("keyup", e => keys.delete(keyName(e)));
 window.addEventListener("blur", () => keys.clear());
 
 // 테마가 바뀌면 시작 화면 미리보기를 다시 그린다(게임 화면은 매 프레임 다시 그림)

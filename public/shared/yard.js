@@ -47,7 +47,9 @@ export function createYard(canvas, opts = {}){
   }
 
   const MOVE_KEYS = ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","a","d","w","s"];
-  const keyName = e => (e.key.length === 1 ? e.key.toLowerCase() : e.key);
+  // W A S D 는 글자가 아니라 키 자리(e.code)로 읽는다. 한글 입력 상태에서 W 가 'ㅈ' 으로 들어와도 걷게.
+  const WASD = { KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d" };
+  const keyName = e => WASD[e.code] || (e.key.length === 1 ? e.key.toLowerCase() : e.key);
 
   function onKeyDown(e){
     if (spectator || e.metaKey || e.ctrlKey || e.altKey) return;

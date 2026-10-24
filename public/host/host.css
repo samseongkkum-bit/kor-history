@@ -35,7 +35,7 @@ body{padding-inline:20px; padding-block:0 var(--s4)}
 .lobbycard{background:var(--hanji); border:2px dashed var(--hwang); border-radius:var(--r-md); padding:var(--s6); text-align:center; display:flex; flex-direction:column; gap:var(--s2)}
 .lobbycard .n{font-family:var(--serif); font-weight:700; font-size:56px; line-height:1.1; color:var(--red); font-variant-numeric:tabular-nums}
 
-.levels{display:grid; grid-template-columns:1fr 1fr; gap:var(--s2)}
+.levels{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2)}
 .lvbtn{font:inherit; text-align:left; padding:var(--s2) var(--s4); min-height:60px; border-radius:var(--r-md); border:2px solid var(--hairline); background:var(--hanji); color:var(--meok); cursor:pointer; display:flex; flex-direction:column}
 .lvbtn b{font-family:var(--serif); font-size:20px}
 .lvbtn span{font-size:14px; color:var(--meok-muted)}

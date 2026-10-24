@@ -1,6 +1,6 @@
 // 진행자 화면. 방을 만들고 단계를 고르고 문제를 넘긴다. 마당은 관전용으로 크게 보여 준다.
 // 채점과 시간은 Supabase(Postgres 함수)가 정하고, 이 화면은 마감 시각에 채점 함수를 불러 줄 뿐이다.
-import { esc, KINDS } from "/shared/consts.js";
+import { ROUND, esc, KINDS } from "/shared/consts.js";
 import { drawPerson, cv, jacket } from "/shared/draw.js";
 import { createYard } from "/shared/yard.js";
 import { zonesFor, zoneAt } from "/shared/map.js";
@@ -26,7 +26,7 @@ let levels = [];
 async function loadLevels(){
   try { levels = await api.levels(); } catch { levels = []; }
   $("levels").innerHTML = levels.map(l =>
-    `<button class="lvbtn" type="button" data-level="${esc(l.key)}" aria-pressed="false"><b>${esc(l.name)}</b><span>${esc(l.kind)} · ${l.total}문제</span></button>`
+    `<button class="lvbtn" type="button" data-level="${esc(l.key)}" aria-pressed="false"><b>${esc(l.name)}</b><span>${esc(l.kind)} · 총 ${ROUND}문제</span></button>`
   ).join("");
   $("levels").querySelectorAll("[data-level]").forEach(b => b.onclick = async () => {
     try { render(await api.hostLevel(room.code, room.hostToken, b.dataset.level)); } catch (e) { console.warn(e.message); }
@@ -109,6 +109,13 @@ function ensureYard(){
 const guard = fn => async () => { try { render(await fn()); } catch (e) { console.warn(e.message); } };
 $("startBtn").onclick = guard(() => api.hostStart(room.code, room.hostToken));
 $("nextBtn").onclick  = guard(() => api.hostNext(room.code, room.hostToken));
+// 시간이 남아 있어도 지금 마감하고 채점한다. 정답이 나오면 [다음 문제]로 바로 넘어갈 수 있다.
+$("revealBtn").onclick = async () => {
+  $("revealBtn").disabled = true;
+  try { render(await api.hostReveal(room.code, room.hostToken)); }
+  catch (e) { console.warn(e.message); alert("지금은 정답 확인을 할 수 없어요. 시간이 끝나면 저절로 정답이 나와요.\n(Supabase에 supabase/migrations/0006_reveal_now.sql 이 올라가 있는지 확인해 주세요.)"); }
+  finally { $("revealBtn").disabled = false; }
+};
 $("againBtn").onclick = guard(() => api.hostStart(room.code, room.hostToken));
 $("endBtn").onclick = async () => {
   if (!confirm("게임을 지금 끝내고 최종 순위를 보여 줄까요?\n새 방도 바로 만들어 둘게요.")) return;
@@ -156,7 +163,6 @@ function render(s){
   if (!s) return;
   show(s.phase === "final" ? "s-final" : "s-game");
   $("code").textContent = s.code;
-  $("today").textContent = `오늘 참여 인원 합계 ${s.todayTotal ?? 0}명`;
   $("phase").textContent = {
     lobby: "대기실 · 학생을 기다려요", question: `문제 ${s.qIndex + 1} / ${s.total}`,
     reveal: "정답 공개", final: "최종 결과"
@@ -170,6 +176,7 @@ function render(s){
   $("startBtn").textContent = s.phase === "final" ? "새 문제로 한 판 더" : "게임 시작";
   $("startBtn").disabled = (s.count ?? 0) === 0;
   $("nextBtn").hidden = s.phase !== "reveal";
+  $("revealBtn").hidden = s.phase !== "question";
   $("endBtn").disabled = s.phase === "lobby";
   $("plabel").textContent = s.phase === "lobby" ? "들어온 학생" : "학생";
   $("pcount").textContent = s.count ?? 0;
@@ -255,7 +262,7 @@ function renderFinal(s){
   $("lobbyBtn").hidden = !!nextSnap;
   $("newRoomBtn").textContent = nextSnap ? "새 방 대기실로" : "새 방 만들기";
   const list = s.ranking || [];
-  $("finalHead").textContent = `${list.length}명 참여 · ${s.questions ?? 0}문제 · 오늘 참여 인원 합계 ${s.todayTotal ?? 0}명`;
+  $("finalHead").textContent = `${list.length}명 참여 · ${s.questions ?? 0}문제`;
   $("finalList").innerHTML = list.map(p =>
     `<li><span class="no">${p.place}</span><span class="nm">${esc(p.name)}</span><span class="ti">${esc(p.title)}</span><span class="sc">${p.score}점</span></li>`
   ).join("") || `<li class="muted">참여한 학생이 없어요</li>`;

@@ -1316,3 +1316,65 @@ insert into questions(level, idx, type, q, choices, answer, accept, hint, explai
   ('high', 104, 'sa', '1919년 김원봉이 만든, 일제 기관 파괴와 요인 암살을 펼친 단체는?', null, '의열단', '[]'::jsonb, '신채호가 「조선 혁명 선언」을 써 주었어요.', '의열단은 김상옥·나석주 등이 조선 총독부, 종로 경찰서, 동양 척식 주식회사 등을 공격했어요.'),
   ('high', 105, 'sa', '1940년 대한민국 임시 정부가 충칭에서 만든 정규 군대는?', null, '한국광복군', '["광복군"]'::jsonb, '총사령관은 지청천이에요.', '한국광복군은 연합군과 함께 싸웠고 국내 진공 작전을 준비했지만, 그 전에 광복을 맞았어요.'),
   ('high', 106, 'sa', '1920년대 ''조선 사람 조선 것''이라는 구호로 우리 물건을 쓰자고 한 운동은?', null, '물산 장려 운동', '[]'::jsonb, '평양에서 조만식 등이 시작했어요.', '물산 장려 운동은 민족 기업을 키우려고 국산품을 애용하자는 운동이에요.');
+
+
+-- ======================================================
+-- 0005_rotation.sql
+-- ======================================================
+
+-- 이미 낸 문제를 방이 아니라 단계별로 기억한다.
+-- 진행자 화면을 새로고침해 방을 새로 만들어도, 문제 은행을 한 바퀴 다 돌 때까지 같은 문제가 다시 나오지 않는다.
+
+create table if not exists question_rotation (
+  level text primary key references levels(key) on delete cascade,
+  used  jsonb not null default '{}'::jsonb      -- hq_build_round 가 쓰는 모양 그대로: {"<level>": [idx, ...]}
+);
+alter table question_rotation enable row level security;   -- 정책이 없으니 손님은 읽지도 쓰지도 못한다
+
+create or replace function host_start(p_code text, p_token uuid)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_level text; v_used jsonb; v_built jsonb;
+begin
+  perform hq_check_host(p_code, p_token);
+  select r.level into v_level from rooms r where r.code = p_code;
+
+  -- 여러 방이 동시에 시작해도 같은 기록을 겹쳐 쓰지 않게 줄을 잠근다.
+  insert into question_rotation(level) values (v_level) on conflict do nothing;
+  select qr.used into v_used from question_rotation qr where qr.level = v_level for update;
+
+  v_built := hq_build_round(v_level, coalesce(v_used, '{}'::jsonb));
+  update question_rotation set used = v_built -> 'used' where level = v_level;
+  update room_secrets set round = v_built -> 'round', used = v_built -> 'used' where code = p_code;
+
+  delete from answers where room_code = p_code;
+  update players set score = 0, bonus = 0, pending = false where room_code = p_code;
+  update rooms set q_index = -1, graded_index = -1, q_total = jsonb_array_length(v_built -> 'round')
+   where code = p_code;
+
+  perform hq_next_question(p_code);
+  return get_snapshot(p_code, null);
+end $$;
+
+
+-- ======================================================
+-- 0006_reveal_now.sql
+-- ======================================================
+
+-- 진행자가 [정답 확인]을 누르면 남은 시간을 끊고 바로 채점한다.
+-- 마감 시각을 지금으로 당긴 뒤 평소의 grade_question 을 부르므로, 채점 규칙은 시간이 다 됐을 때와 똑같다.
+create or replace function host_reveal_now(p_code text, p_token uuid)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  perform hq_check_host(p_code, p_token);
+  update rooms set ends_at = now()
+   where code = p_code and phase = 'question' and ends_at > now();
+  return grade_question(p_code);
+end $$;
+
+revoke execute on function host_reveal_now(text, uuid) from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    grant execute on function host_reveal_now(text, uuid) to anon, authenticated;
+  end if;
+end $$;
