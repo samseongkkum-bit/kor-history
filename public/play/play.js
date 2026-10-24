@@ -1,6 +1,5 @@
 // 학생 화면. 내 캐릭터만 내 기기가 움직이고, 채점과 시간은 Supabase(Postgres 함수)가 정한다.
 import { RANKS, NUMS, POINTS, KINDS, esc, rankOf, ieyo, colorInfo } from "/shared/consts.js";
-import { drawPerson, cv, jacket } from "/shared/draw.js";
 import { createYard } from "/shared/yard.js";
 import { zonesFor } from "/shared/map.js";
 import { api, watchRoom, positionRelay, configMissing, NetError } from "/shared/net.js";
@@ -24,7 +23,7 @@ let yard = null, watch = null, relay = null, timerRaf = 0, beacon = 0;
 let shownQ = -2, shownPhase = "", answers = [], total = 10, curType = "ox", hintOpen = false;
 
 /* ---------------- 화면 바꾸기 ---------------- */
-const SCREENS = ["s-join","s-wait","s-quiz","s-final","s-msg"];
+const SCREENS = ["s-join","s-quiz","s-final","s-msg"];
 function show(which){
   SCREENS.forEach(id => $(id).hidden = id !== which);
   $("foot").hidden = which !== "s-quiz";
@@ -36,15 +35,6 @@ function message(title, body, btn = "처음으로", onBtn){
   show("s-msg");
 }
 const showErr = m => { $("joinErr").textContent = m; $("joinErr").hidden = false; };
-
-/* ---------------- 내 캐릭터 미리보기(대기 화면) ---------------- */
-function drawPreview(){
-  const pv = $("pv"); if (!pv || !me.color) return;
-  const ctx = pv.getContext("2d");
-  ctx.setTransform(4,0,0,4,0,0);
-  ctx.fillStyle = cv("--ground"); ctx.fillRect(0,0,110,110);
-  drawPerson(ctx, 55, 62, { upper: jacket(me.color), lower: cv("--meok-muted"), ribbon: cv("--red") });
-}
 
 /* ---------------- 입장 화면 ---------------- */
 function buildJoin(){
@@ -113,7 +103,7 @@ function ensureYard(){
 
   yard.on("move", p => {
     relay?.send(me.id, p.x, p.y, true);
-    posToServer(p);                       // 서버에도 이따금 알려 둔다(마감 때 이 위치로 채점한다)
+    if (shownPhase === "question") posToServer(p);   // 문제 중에는 서버에도 이따금 알려 둔다(마감 때 이 위치로 채점한다)
   });
   yard.on("zone", z => {
     if (curType === "sa") return;            // 주관식에는 돗자리가 없다
@@ -181,8 +171,21 @@ function lockAnswer(){
   $("where").textContent = "답을 냈어요. 채점을 기다려요!";
 }
 
+// 대기실이면 문제 카드와 버튼 대신 대기 안내를 보여 주고, 마당과 조이스틱만 남긴다.
+function setLobbyView(on){
+  $("lobbycard").hidden = !on; $("qcard").hidden = on;
+  document.querySelector("#s-quiz .status").hidden = on;
+  if (on){
+    $("fb").hidden = true;
+    document.querySelector("#s-quiz .controls").hidden = false;
+    $("stage").hidden = false; $("joy").hidden = false;
+    $("foot").textContent = "조이스틱을 끌어서 걷기 · 마당을 눌러도 그쪽으로 걸어가요 · 친구들도 마당에 함께 보여요";
+  }
+}
+
 // 문제 종류에 맞게 조작판을 바꾼다. 주관식은 마당·조이스틱 대신 답 쓰는 칸을 보여 준다.
 function setMode(type){
+  setLobbyView(false);
   const sa = type === "sa";
   $("stage").hidden = sa; $("joy").hidden = sa; $("decide").hidden = sa;
   $("ansForm").hidden = !sa; $("ansBtn").hidden = !sa;
@@ -245,12 +248,15 @@ function render(s){
 }
 
 function renderWait(s){
+  const fresh = shownPhase !== "lobby";
   shownQ = -2; shownPhase = "lobby";
+  stopTimer();
   $("waitWho").innerHTML = `<b>${esc(me.name)}</b> 님, 반가워요!`;
   $("waitCount").textContent = `지금 마당에 ${s.count ?? 1}명 있어요`;
   $("waitColor").innerHTML = me.color ? `내 저고리는 <b>${esc(colorInfo(me.color).label)}</b>색이에요` : "";
-  show("s-wait");
-  drawPreview();
+  setLobbyView(true);
+  show("s-quiz");
+  if (fresh){ yard.setLobby(); $("stage").focus({ preventScroll: true }); }
 }
 
 function renderQuestion(s){
@@ -444,8 +450,6 @@ if (configMissing()){
 } else {
   buildJoin();
   show("s-join");
-  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", drawPreview);
-  (document.fonts ? document.fonts.ready : Promise.resolve()).then(drawPreview);
   // 새로고침했는데 들어가 있던 방이 있으면 바로 다시 들어간다(재접속)
   if (me.token && me.code && me.name) doJoin();
 }
