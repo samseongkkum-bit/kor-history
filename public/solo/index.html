@@ -106,6 +106,9 @@ canvas{display:block; width:100%; height:auto; cursor:pointer}
 }
 .where{font-size:20px; line-height:28px}
 .where b{font-family:var(--serif)}
+/* 키보드로 쓰는 기기에서만 '(스페이스)' 를 보여 준다 */
+.kbd{font-size:.8em; opacity:.8}
+@media (hover:none) and (pointer:coarse){ .kbd{display:none} }
 .hint{border:1px dashed var(--hwang); border-radius:var(--r-md); padding:var(--s2) var(--s4); background:var(--hanji)}
 
 .actions{display:flex; gap:var(--s4); flex-wrap:wrap}
@@ -893,7 +896,7 @@ function renderBelow(){
         </div>
       </div>
       <p class="explain">${esc(q.ex)}</p>
-      <div class="actions"><button class="btn btn-primary" type="button" id="nextBtn">${last ? "결과 보기" : "다음 문제"}</button></div>
+      <div class="actions"><button class="btn btn-primary" type="button" id="nextBtn">${last ? "결과 보기" : "다음 문제"} <small class="kbd">(스페이스)</small></button></div>
     </div>`;
     document.getElementById("nextBtn").onclick = next; decidedAt = performance.now();
   }
