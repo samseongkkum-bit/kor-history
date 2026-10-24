@@ -162,7 +162,7 @@ footer{text-align:center}
     <span class="chip" id="status">혼자 하기(비상용)</span>
   </div>
   <main id="app" aria-live="polite"></main>
-  <footer class="cap muted"><a href="/" style="color:var(--cheong)">다른 화면 고르기</a> · 컴퓨터는 W A S D(방향키도 돼요) · 폰은 조이스틱 · 마당을 눌러도 그쪽으로 걸어가요 · 스페이스로 결정</footer>
+  <footer class="cap muted"><a href="/" style="color:var(--cheong)">다른 화면 고르기</a> · 컴퓨터는 W A S D(방향키도 돼요) · 폰은 조이스틱 · 마당을 눌러도 그쪽으로 걸어가요 · 스페이스로 결정, 한 번 더 누르면 다음 문제</footer>
 </div>
 
 <script>
@@ -1033,7 +1033,8 @@ document.addEventListener("keydown", e => {
   const k = keyName(e);
   if(MOVE.includes(k)){ if(S.picked === undefined){ keys.add(k); e.preventDefault(); } }
   else if((k === " " || k === "Enter") && S.picked === undefined){ e.preventDefault(); decide(false); }
-  else if(k === "Enter" && S.picked !== undefined && !e.repeat && performance.now() - decidedAt > 400 && e.target.id !== "nextBtn"){ e.preventDefault(); next(); }
+  // 정답을 본 뒤 스페이스·엔터로 다음 문제. 꾹 누르고 있거나 결정 직후 한 번 더 눌러 해설을 건너뛰지 않게 막는다.
+  else if((k === " " || k === "Enter") && S.picked !== undefined && !e.repeat && performance.now() - decidedAt > 400 && e.target.id !== "nextBtn"){ e.preventDefault(); next(); }
 });
 document.addEventListener("keyup", e => keys.delete(keyName(e)));
 window.addEventListener("blur", () => keys.clear());
