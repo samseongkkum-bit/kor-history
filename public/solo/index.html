@@ -106,7 +106,7 @@ canvas{display:block; width:100%; height:auto; cursor:pointer}
 }
 .where{font-size:20px; line-height:28px}
 .where b{font-family:var(--serif)}
-/* 컴퓨터는 버튼 대신 스페이스로 결정하고 넘어간다. 손가락으로 쓰는 기기(폰·태블릿)는 버튼을 그대로 쓴다. */
+/* 결정은 어느 기기든 버튼으로 하고, 컴퓨터는 스페이스로도 결정한다. 다음 문제는 컴퓨터는 스페이스로만, 손가락으로 쓰는 기기(폰·태블릿)는 버튼으로 넘어간다. */
 .keynote{font-size:16px; color:var(--meok-muted)}
 .keynote kbd{font:inherit; font-weight:700; color:var(--meok); padding:1px 8px; border:1px solid var(--hairline); border-bottom-width:3px; border-radius:6px; background:var(--hanji)}
 @media not all and (hover:none) and (pointer:coarse){ .touch-only{display:none !important} }
@@ -871,10 +871,10 @@ function renderBelow(){
     <div class="controls">
       <div class="status">
         <p class="where" id="where">아직 자리를 고르지 않았어요.</p>
-        <p class="keynote key-only">답 자리에 서서 <kbd>스페이스</kbd>를 누르면 결정돼요.</p>
+        <p class="keynote key-only">답 자리에 서서 [여기로 결정!]을 누르거나 <kbd>스페이스</kbd>를 눌러도 결정돼요.</p>
         <p class="hint" id="hintbox" ${S.hint?"":"hidden"}><b>힌트</b> · ${esc(q.hint)}</p>
         <div class="actions">
-          <button class="btn btn-primary touch-only" type="button" id="decide" disabled>여기로 결정!</button>
+          <button class="btn btn-primary" type="button" id="decide" disabled>여기로 결정!</button>
           <button class="btn btn-secondary" type="button" id="hintBtn" ${S.hint?"hidden":""}>힌트 보기</button>
         </div>
       </div>
