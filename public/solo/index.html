@@ -97,8 +97,8 @@ canvas{display:block; width:100%; height:auto; cursor:pointer}
 .controls{display:grid; grid-template-columns:minmax(0,1fr); gap:var(--s4); align-items:start}
 .status{display:flex; flex-direction:column; gap:var(--s2); min-width:0}
 /* 조이스틱: 손가락으로 쓰는 기기(폰·태블릿)에서만 보인다. 컴퓨터는 W A S D. */
-.joy{display:none; position:relative; width:136px; height:136px; border-radius:50%; background:var(--hanji); border:2px solid var(--hairline); box-shadow:inset 0 0 0 10px var(--hanji-deep); touch-action:none; user-select:none; -webkit-user-select:none}
-.joy .knob{position:absolute; left:50%; top:50%; width:60px; height:60px; margin:-30px 0 0 -30px; border-radius:50%; background:var(--cheong); border:3px solid var(--hanji); box-shadow:0 2px 6px rgba(0,0,0,.25); pointer-events:none}
+.joy{display:none; position:relative; width:104px; height:104px; border-radius:50%; background:var(--hanji); border:2px solid var(--hairline); box-shadow:inset 0 0 0 8px var(--hanji-deep); touch-action:none; user-select:none; -webkit-user-select:none}
+.joy .knob{position:absolute; left:50%; top:50%; width:44px; height:44px; margin:-22px 0 0 -22px; border-radius:50%; background:var(--cheong); border:3px solid var(--hanji); box-shadow:0 2px 6px rgba(0,0,0,.25); pointer-events:none}
 .joy.on .knob{background:var(--hwang)}
 @media (hover:none) and (pointer:coarse){
   .joy{display:block}
@@ -106,9 +106,11 @@ canvas{display:block; width:100%; height:auto; cursor:pointer}
 }
 .where{font-size:20px; line-height:28px}
 .where b{font-family:var(--serif)}
-/* 키보드로 쓰는 기기에서만 '(스페이스)' 를 보여 준다 */
-.kbd{font-size:.8em; opacity:.8}
-@media (hover:none) and (pointer:coarse){ .kbd{display:none} }
+/* 컴퓨터는 버튼 대신 스페이스로 결정하고 넘어간다. 손가락으로 쓰는 기기(폰·태블릿)는 버튼을 그대로 쓴다. */
+.keynote{font-size:16px; color:var(--meok-muted)}
+.keynote kbd{font:inherit; font-weight:700; color:var(--meok); padding:1px 8px; border:1px solid var(--hairline); border-bottom-width:3px; border-radius:6px; background:var(--hanji)}
+@media not all and (hover:none) and (pointer:coarse){ .touch-only{display:none !important} }
+@media (hover:none) and (pointer:coarse){ .key-only{display:none !important} }
 .hint{border:1px dashed var(--hwang); border-radius:var(--r-md); padding:var(--s2) var(--s4); background:var(--hanji)}
 
 .actions{display:flex; gap:var(--s4); flex-wrap:wrap}
@@ -869,9 +871,10 @@ function renderBelow(){
     <div class="controls">
       <div class="status">
         <p class="where" id="where">아직 자리를 고르지 않았어요.</p>
+        <p class="keynote key-only">답 자리에 서서 <kbd>스페이스</kbd>를 누르면 결정돼요.</p>
         <p class="hint" id="hintbox" ${S.hint?"":"hidden"}><b>힌트</b> · ${esc(q.hint)}</p>
         <div class="actions">
-          <button class="btn btn-primary" type="button" id="decide" disabled>여기로 결정!</button>
+          <button class="btn btn-primary touch-only" type="button" id="decide" disabled>여기로 결정!</button>
           <button class="btn btn-secondary" type="button" id="hintBtn" ${S.hint?"hidden":""}>힌트 보기</button>
         </div>
       </div>
@@ -896,7 +899,8 @@ function renderBelow(){
         </div>
       </div>
       <p class="explain">${esc(q.ex)}</p>
-      <div class="actions"><button class="btn btn-primary" type="button" id="nextBtn">${last ? "결과 보기" : "다음 문제"} <small class="kbd">(스페이스)</small></button></div>
+      <p class="keynote key-only"><kbd>스페이스</kbd>를 누르면 ${last ? "결과를 볼 수 있어요" : "다음 문제로 넘어가요"}.</p>
+      <div class="actions touch-only"><button class="btn btn-primary" type="button" id="nextBtn">${last ? "결과 보기" : "다음 문제"}</button></div>
     </div>`;
     document.getElementById("nextBtn").onclick = next; decidedAt = performance.now();
   }
@@ -904,7 +908,7 @@ function renderBelow(){
 
 // 조이스틱을 민 방향과 세기(0~1)를 G.joy 에 담는다. 많이 밀수록 빨리 걷는다.
 function bindJoystick(joy){
-  const knob = joy.firstElementChild, REACH = 46, DEAD = 8;
+  const knob = joy.firstElementChild, REACH = 32, DEAD = 6;
   const move = e => {
     const r = joy.getBoundingClientRect();
     let dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2);
