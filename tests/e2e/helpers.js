@@ -32,7 +32,7 @@ export async function joinAs(page, code, name){
   await page.goto(`/play?code=${code}`);
   await page.locator("#pname").fill(name);
   await page.getByRole("button", { name: /마당에 .*들어가기/ }).click();
-  await expect(page.locator("#s-wait")).toBeVisible();
+  await expect(page.locator("#lobbycard")).toBeVisible();
   return name;
 }
 

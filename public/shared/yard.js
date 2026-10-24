@@ -132,8 +132,8 @@ export function createYard(canvas, opts = {}){
         else { const m = Math.min(d, SPEED*dt); S.me = { x: S.me.x + vx/d*m, y: S.me.y + vy/d*m, moving: true }; }
       } else S.me.moving = false;
 
-      // 힌트 두루마리에 가까이 가면 열린다
-      if (Math.hypot(S.me.x - SCROLL.x, S.me.y - SCROLL.y) < 46) handlers.scroll();
+      // 힌트 두루마리에 가까이 가면 열린다(문제가 있을 때만. 대기실에는 두루마리가 없다)
+      if (S.zones.length && !S.answered && Math.hypot(S.me.x - SCROLL.x, S.me.y - SCROLL.y) < 46) handlers.scroll();
 
       // 서 있는 자리가 바뀌면 알려 준다
       const z = zoneAt(S.me, S.zones);
@@ -204,6 +204,17 @@ export function createYard(canvas, opts = {}){
       S.hideOthers = !spectator;
       S.releaseJoy?.();
       S.me = { ...START, moving: false };
+      keys.clear();
+    },
+    // 대기실: 돗자리 없이 마당을 자유롭게 걷고, 친구들도 다 보인다(ZEP 처럼).
+    // 모두 같은 자리에서 겹쳐 서지 않게 마당 아래쪽 아무 데서나 시작한다.
+    setLobby(){
+      S.zones = []; S.counts = null; S.answered = false; S.answer = undefined; S.picked = undefined;
+      S.hintOpen = false; S.frozen = spectator; S.target = null; S.lastZoneKey = undefined;
+      S.hideOthers = false;
+      S.releaseJoy?.();
+      S.me = { ...clampYard({ x: START.x + (Math.random() - .5) * 600, y: START.y - Math.random() * 160 }), moving: false };
+      S.needFinalSend = true;
       keys.clear();
     },
     setReveal({ answer, picked }){ S.answered = true; S.answer = answer; S.picked = picked; S.frozen = true; S.target = null; S.hideOthers = false; keys.clear(); S.releaseJoy?.(); },

@@ -39,19 +39,15 @@
       </div>
     </section>
 
-    <!-- ② 대기 -->
-    <section class="board mid" id="s-wait" hidden>
-      <h1>마당에 들어왔어요!</h1>
-      <p class="big" id="waitWho"></p>
-      <canvas class="preview" id="pv" width="440" height="440" aria-label="내 캐릭터"></canvas>
-      <p id="waitColor"></p>
-      <p class="muted">훈장님이 문제를 낼 때까지 조금만 기다려 주세요. 그동안 마당을 걸어 다녀도 돼요.</p>
-      <p class="pill" id="waitCount"></p>
-    </section>
-
-    <!-- ③ 문제 -->
+    <!-- ② 대기실 · ③ 문제 (대기실에서도 같은 마당을 걸어 다닌다) -->
     <section id="s-quiz" hidden>
-      <div class="qcard">
+      <div class="lobbycard" id="lobbycard" hidden>
+        <p class="big" id="waitWho"></p>
+        <p id="waitColor"></p>
+        <p class="muted">훈장님이 문제를 낼 때까지 마당을 걸어 다니며 친구들을 만나 보세요!</p>
+        <p class="pill" id="waitCount"></p>
+      </div>
+      <div class="qcard" id="qcard">
         <div class="progress" id="dots" aria-hidden="true"></div>
         <div class="qhead">
           <span class="qnum" id="qnum"></span>

@@ -42,7 +42,7 @@ test("강제 종료 → 새 방 → 이전 학생 다시 부르기", async ({ br
   await expect(B.page.locator("#inviteBox")).toBeHidden();
 
   await A.page.getByRole("button", { name: "새 방으로 들어가기" }).click();
-  await expect(A.page.locator("#s-wait")).toBeVisible({ timeout: 20_000 });
+  await expect(A.page.locator("#lobbycard")).toBeVisible({ timeout: 20_000 });
   await expect(A.page.locator("#chip")).toContainText(newCode);
   await expect(host.locator("#players")).toContainText("가");
   await expect(host.locator("#prevPlayers li", { hasText: "가" })).toContainText("들어왔어요");
@@ -51,6 +51,6 @@ test("강제 종료 → 새 방 → 이전 학생 다시 부르기", async ({ br
   await host.getByRole("button", { name: "모두 다시 부르기" }).click();
   await expect(B.page.locator("#inviteBox")).toBeVisible({ timeout: 20_000 });
   await B.page.getByRole("button", { name: "새 방으로 들어가기" }).click();
-  await expect(B.page.locator("#s-wait")).toBeVisible({ timeout: 20_000 });
+  await expect(B.page.locator("#lobbycard")).toBeVisible({ timeout: 20_000 });
   await expect(host.locator("#pcount")).toHaveText("2");
 });
