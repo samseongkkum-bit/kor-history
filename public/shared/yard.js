@@ -66,7 +66,7 @@ export function createYard(canvas, opts = {}){
     let pid = null;
     const set = (x, y) => {
       S.joy = { x, y };
-      if (knob) knob.style.transform = `translate(${x * 50}%, ${y * 50}%)`;
+      if (knob) knob.style.transform = `translate(${x * 75}%, ${y * 75}%)`;   // 손잡이(지름의 40%)가 테두리 안쪽까지 움직이게
     };
     const release = () => { pid = null; set(0, 0); base.classList.remove("on"); };
     const update = e => {

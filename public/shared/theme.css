@@ -81,9 +81,9 @@ canvas{display:block; width:100%; height:auto}
 .where b{font-family:var(--serif)}
 .hint{border:1px dashed var(--hwang); border-radius:var(--r-md); padding:var(--s2) var(--s4); background:var(--hanji)}
 /* 조이스틱: 동그란 판 안의 손잡이를 끌어서 걷는다 */
-.joy{position:relative; width:136px; height:136px; border-radius:50%; border:2px solid var(--hairline); background:var(--hanji); touch-action:none; user-select:none; -webkit-user-select:none; cursor:grab; flex:none}
+.joy{position:relative; width:104px; height:104px; border-radius:50%; border:2px solid var(--hairline); background:var(--hanji); touch-action:none; user-select:none; -webkit-user-select:none; cursor:grab; flex:none}
 .joy::before{content:""; position:absolute; inset:30%; border-radius:50%; border:1px dashed var(--hairline)}
-.joy .knob{position:absolute; left:25%; top:25%; width:50%; height:50%; border-radius:50%; background:var(--cheong); box-shadow:0 2px 6px rgba(0,0,0,.25); pointer-events:none; transition:transform .12s ease-out}
+.joy .knob{position:absolute; left:30%; top:30%; width:40%; height:40%; border-radius:50%; background:var(--cheong); box-shadow:0 2px 6px rgba(0,0,0,.25); pointer-events:none; transition:transform .12s ease-out}
 .joy.on{border-color:var(--hwang); cursor:grabbing}
 .joy.on .knob{transition:none}
 
