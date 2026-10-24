@@ -81,11 +81,12 @@ canvas{display:block; width:100%; height:auto}
 .where{font-size:20px; line-height:28px}
 .where b{font-family:var(--serif)}
 .hint{border:1px dashed var(--hwang); border-radius:var(--r-md); padding:var(--s2) var(--s4); background:var(--hanji)}
-.pad{display:grid; grid-template-columns:repeat(3,56px); grid-template-rows:repeat(2,56px); gap:6px}
-.pad button{font:inherit; font-size:22px; border-radius:var(--r-md); border:2px solid var(--hairline); background:var(--hanji); color:var(--meok); cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none}
-.pad button:active{background:var(--hanji-deep)}
-.pad .up{grid-column:2}
-.pad .left{grid-column:1; grid-row:2} .pad .down{grid-column:2; grid-row:2} .pad .right{grid-column:3; grid-row:2}
+/* 조이스틱: 동그란 판 안의 손잡이를 끌어서 걷는다 */
+.joy{position:relative; width:136px; height:136px; border-radius:50%; border:2px solid var(--hairline); background:var(--hanji); touch-action:none; user-select:none; -webkit-user-select:none; cursor:grab; flex:none}
+.joy::before{content:""; position:absolute; inset:30%; border-radius:50%; border:1px dashed var(--hairline)}
+.joy .knob{position:absolute; left:25%; top:25%; width:50%; height:50%; border-radius:50%; background:var(--cheong); box-shadow:0 2px 6px rgba(0,0,0,.25); pointer-events:none; transition:transform .12s ease-out}
+.joy.on{border-color:var(--hwang); cursor:grabbing}
+.joy.on .knob{transition:none}
 
 .actions{display:flex; gap:var(--s4); flex-wrap:wrap}
 .btn{font:inherit; font-size:18px; line-height:24px; font-weight:700; min-height:52px; padding:var(--s4) var(--s6); border-radius:var(--r-md); cursor:pointer; border:2px solid transparent}
@@ -132,5 +133,5 @@ footer{text-align:center}
   .question{font-size:22px; line-height:32px}
   .board{padding:var(--s6) var(--s4)}
   .controls{grid-template-columns:1fr}
-  .pad{justify-self:center}
+  .joy{justify-self:center}
 }

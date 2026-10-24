@@ -52,6 +52,12 @@ body{padding-inline:20px; padding-block:0 var(--s4)}
 .kick{font:inherit; font-size:13px; min-height:32px; padding:2px 10px; border-radius:var(--r-sm); border:1px solid var(--hairline); background:transparent; color:var(--meok-muted); cursor:pointer}
 .kick:hover{border-color:var(--wrong); color:var(--wrong)}
 
+.players .inv{color:var(--cheong); font-size:13px; font-weight:700}
+.kick.call{color:var(--cheong); border-color:var(--cheong)}
+.kick.call:hover{background:var(--cheong); color:var(--on-color)}
+.nextnote{text-align:center; font-size:20px; background:var(--hanji); border:2px dashed var(--hwang); border-radius:var(--r-md); padding:var(--s4)}
+.nextnote b{font-family:var(--serif); color:var(--red); font-size:28px; letter-spacing:.1em}
+
 .final-list li{padding:var(--s4)}
 .final-list .no{font-size:28px}
 .final-list .nm{font-size:22px}

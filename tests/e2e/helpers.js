@@ -28,10 +28,9 @@ export async function createRoom(page){
   return (await page.locator("#code").textContent()).trim();
 }
 
-export async function joinAs(page, code, name, color = "red"){
+export async function joinAs(page, code, name){
   await page.goto(`/play?code=${code}`);
   await page.locator("#pname").fill(name);
-  if (color !== "red") await page.locator(`[data-color="${color}"]`).click();
   await page.getByRole("button", { name: /마당에 .*들어가기/ }).click();
   await expect(page.locator("#s-wait")).toBeVisible();
   return name;

@@ -30,19 +30,50 @@ returns text language sql immutable as $$
   end
 $$;
 
--- 문제당 제한 시간: O/X 12초, 객관식 20초
+-- 문제당 제한 시간: O/X 22초, 객관식 30초, 주관식 40초(폰으로 글자를 쳐야 하니까)
 create or replace function hq_seconds(p_type text) returns int
-language sql immutable as $$ select case when p_type = 'mc' then 20 else 12 end $$;
+language sql immutable as $$ select case when p_type = 'mc' then 30 when p_type = 'sa' then 40 else 22 end $$;
 
--- 칭호(10점 만점)
+-- 주관식 답 비교용으로 다듬는다: 띄어쓰기·가운뎃점·괄호·따옴표 같은 것은 빼고, '1592년'과 '1592'는 같게 본다.
+-- public/solo/index.html 의 normAnswer 와 같은 규칙.
+create or replace function hq_norm(p text) returns text
+language sql immutable as $$
+  select regexp_replace(
+           regexp_replace(lower(coalesce(p, '')), '[][[:space:]·ㆍ.,''"‘’“”()（）『』「」<>《》〈〉!?~-]', '', 'g'),
+           '([0-9])년$', '\1')
+$$;
+
+-- 주관식 채점: 정답이나 함께 인정하는 이름 중 하나와 같으면 맞다.
+create or replace function hq_sa_correct(p_typed text, p_answer text, p_accept jsonb) returns boolean
+language sql immutable as $$
+  select hq_norm(p_typed) <> '' and hq_norm(p_typed) in (
+    select hq_norm(p_answer)
+    union all
+    select hq_norm(x) from jsonb_array_elements_text(coalesce(p_accept, '[]'::jsonb)) x
+  )
+$$;
+
+-- 한 문제 맞히면 받는 점수(10문제 100점 만점)
+create or replace function hq_points() returns int
+language sql immutable as $$ select 10 $$;
+
+-- 저고리 색 목록(public/shared/consts.js 의 COLORS 와 같은 순서·같은 개수). 한 방 최대 인원(30명)만큼 있다.
+create or replace function hq_colors() returns text[]
+language sql immutable as $$ select array[
+  'red','cheong','hwang','pink','purple','sky','navy','green','lime','orange',
+  'brown','plum','mint','lav','coral','olive','teal','lemon','rose','blue',
+  'meok','gray','peach','wine','forest','cyan','violet','tan','magenta','steel'
+] $$;
+
+-- 칭호(100점 만점)
 create or replace function hq_title(p_score int) returns text
 language sql immutable as $$
   select case
-    when p_score >= 10 then '왕'
-    when p_score >= 9  then '조선의 학자'
-    when p_score >= 7  then '귀족'
-    when p_score >= 5  then '평민'
-    when p_score >= 3  then '양민'
+    when p_score >= 100 then '왕'
+    when p_score >= 90  then '조선의 학자'
+    when p_score >= 70  then '귀족'
+    when p_score >= 50  then '평민'
+    when p_score >= 30  then '양민'
     else '천민'
   end
 $$;
@@ -50,11 +81,11 @@ $$;
 create or replace function hq_title_say(p_score int) returns text
 language sql immutable as $$
   select case
-    when p_score >= 10 then '모두 맞혔어요! 오늘 부스의 임금님이에요.'
-    when p_score >= 9  then '거의 다 맞혔어요! 집현전 학자도 놀랄 실력이에요.'
-    when p_score >= 7  then '대단해요! 역사 이야기를 많이 알고 있네요.'
-    when p_score >= 5  then '절반 넘게 맞혔어요! 우리 역사와 꽤 친해졌어요.'
-    when p_score >= 3  then '조금씩 알아가고 있어요. 해설을 다시 읽어 보면 더 잘할 수 있어요.'
+    when p_score >= 100 then '모두 맞혔어요! 오늘 부스의 임금님이에요.'
+    when p_score >= 90  then '거의 다 맞혔어요! 집현전 학자도 놀랄 실력이에요.'
+    when p_score >= 70  then '대단해요! 역사 이야기를 많이 알고 있네요.'
+    when p_score >= 50  then '절반 넘게 맞혔어요! 우리 역사와 꽤 친해졌어요.'
+    when p_score >= 30  then '조금씩 알아가고 있어요. 해설을 다시 읽어 보면 더 잘할 수 있어요.'
     else '이제 막 역사 여행을 시작했어요. 다시 풀면 금방 올라갈 수 있어요!'
   end
 $$;
@@ -64,12 +95,14 @@ create or replace function hq_answer_label(p_type text, p_answer text, p_choices
 returns text language sql immutable as $$
   select case
     when p_type = 'ox' then case when p_answer = 'O' then '○ (맞아요)' else '× (아니에요)' end
+    when p_type = 'sa' then p_answer
     else (array['①','②','③','④'])[p_answer::int + 1] || ' ' || (p_choices ->> p_answer::int)
   end
 $$;
 
 -- 한 판에 쓸 10문제를 뽑는다.
--- 30문제를 한 바퀴 다 돌 때까지 같은 문제가 다시 나오지 않고, 객관식은 보기 순서도 섞는다.
+-- 문제를 한 바퀴 다 돌 때까지 같은 문제가 다시 나오지 않고, 객관식은 보기 순서도 섞는다.
+-- 주관식은 함께 인정하는 이름(accept)도 같이 담아 둔다(room_secrets 에만 들어가므로 손님은 못 본다).
 -- (단일 파일 버전의 buildRound 와 같은 규칙)
 create or replace function hq_build_round(p_level text, p_used jsonb)
 returns jsonb language plpgsql as $$
@@ -118,7 +151,7 @@ begin
     end if;
     v_round := v_round || jsonb_build_object(
       'src', i, 'type', r.type, 'q', r.q, 'choices', v_choices,
-      'answer', v_answer, 'hint', r.hint, 'explain', r.explain);
+      'answer', v_answer, 'accept', r.accept, 'hint', r.hint, 'explain', r.explain);
   end loop;
 
   return jsonb_build_object(

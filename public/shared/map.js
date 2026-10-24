@@ -8,6 +8,7 @@ export const START = {x:480, y:540};
 export const SCROLL = {x:96, y:530, r:26};            // 힌트 두루마리
 
 export function zonesFor(q){
+  if(q.t === "sa") return [];                           // 주관식은 돗자리 없이 답을 써서 낸다
   if(q.t === "ox") return [
     {key:"O", x:90,  y:170, w:340, h:300, label:"○", sub:"맞아요"},
     {key:"X", x:530, y:170, w:340, h:300, label:"×", sub:"아니에요"}

@@ -1,12 +1,11 @@
 // 한옥 마당 캔버스. 진행자 화면(관전)과 학생 화면(내 캐릭터)이 같이 쓴다.
 // 내 캐릭터는 내 기기에서 바로 움직이고, 다른 학생은 서버가 보내 준 위치를 보간해서 부드럽게 그린다.
 import { W, H, START, SCROLL, clampYard, zoneAt } from "./map.js";
-import { COLORS, SPEED } from "./consts.js";
-import { drawYard, drawZones, drawTeacher, drawScroll, drawTarget, drawPlayer, setTextScale, cv } from "./draw.js";
+import { SPEED } from "./consts.js";
+import { drawYard, drawZones, drawTeacher, drawScroll, drawTarget, drawPlayer, setTextScale } from "./draw.js";
 
 const SEND_HZ = 12;                 // 내 위치를 서버로 보내는 횟수(초당)
 const LERP_MS = 110;                // 서버가 위치를 뿌리는 주기(100ms)보다 살짝 길게 잡아 끊기지 않게
-const colorCss = id => (COLORS.find(c => c.id === id) || COLORS[0]).css;
 
 export function createYard(canvas, opts = {}){
   const ctx = canvas.getContext("2d");
@@ -18,11 +17,12 @@ export function createYard(canvas, opts = {}){
     counts: null,
     frozen: spectator,            // 입력을 받지 않는 상태
     hintOpen: false,
+    hideOthers: false,            // 문제를 푸는 동안은 개인전: 다른 학생이 안 보인다(정답 공개 때 보인다)
+    joy: { x: 0, y: 0 },          // 조이스틱 방향(길이 0~1)
     me: { ...START, moving: false },
     target: null,
     others: new Map(),            // id -> {px,py,nx,ny,t0,moving}
     meta: new Map(),              // id -> {name,color}
-    showOthers: true,             // false 면 다른 학생을 그리지 않는다(위치는 계속 받는다)
     myId: null,
     myName: opts.name || "나",
     myColor: opts.color || "red",
@@ -59,26 +59,36 @@ export function createYard(canvas, opts = {}){
   }
   function onKeyUp(e){ keys.delete(keyName(e)); }
 
-  // 화면 조이스틱(폰·태블릿용). 민 방향과 세기(0~1)를 S.joy 에 담는다. 많이 밀수록 빨리 걷는다.
-  function bindJoystick(joy){
-    if (!joy) return;
-    const knob = joy.firstElementChild, REACH = 46, DEAD = 8;
-    const move = e => {
-      const r = joy.getBoundingClientRect();
-      let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-      const d = Math.hypot(dx, dy);
-      if (d > REACH){ dx *= REACH / d; dy *= REACH / d; }
-      knob.style.transform = `translate(${dx}px,${dy}px)`;
-      S.joy = d < DEAD ? null : { x: dx / REACH, y: dy / REACH };
-      S.target = null;
+  // 화면 조이스틱(폰·태블릿용). 가운데에서 끌어낸 만큼 그 방향으로, 멀리 끌수록 빠르게 걷는다.
+  function bindJoystick(base){
+    if (!base) return;
+    const knob = base.querySelector(".knob");
+    let pid = null;
+    const set = (x, y) => {
+      S.joy = { x, y };
+      if (knob) knob.style.transform = `translate(${x * 50}%, ${y * 50}%)`;
     };
-    const end = () => { S.joy = null; knob.style.transform = ""; joy.classList.remove("on"); };
-    joyReset = end;
-    joy.onpointerdown = e => { if (S.frozen) return; e.preventDefault(); joy.setPointerCapture(e.pointerId); joy.classList.add("on"); move(e); };
-    joy.onpointermove = e => { if (joy.hasPointerCapture(e.pointerId) && !S.frozen) move(e); };
-    joy.onpointerup = end; joy.onpointercancel = end; joy.onlostpointercapture = end;
+    const release = () => { pid = null; set(0, 0); base.classList.remove("on"); };
+    const update = e => {
+      const r = base.getBoundingClientRect(), rad = r.width / 2;
+      let x = (e.clientX - r.left - rad) / rad, y = (e.clientY - r.top - rad) / rad;
+      const l = Math.hypot(x, y);
+      if (l > 1){ x /= l; y /= l; }
+      if (l < .15){ x = 0; y = 0; }           // 가운데 근처는 멈춤
+      set(x, y);
+    };
+    base.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      if (S.frozen) return;
+      pid = e.pointerId; base.setPointerCapture?.(e.pointerId);
+      base.classList.add("on"); S.target = null; update(e);
+    });
+    base.addEventListener("pointermove", e => { if (e.pointerId === pid) update(e); });
+    base.addEventListener("pointerup", e => { if (e.pointerId === pid) release(); });
+    base.addEventListener("pointercancel", e => { if (e.pointerId === pid) release(); });
+    base.addEventListener("lostpointercapture", e => { if (e.pointerId === pid) release(); });
+    S.releaseJoy = release;
   }
-  let joyReset = () => { S.joy = null; };
 
   /* ---------------- 서버에서 온 위치 ---------------- */
   function applyPositions({ p }){
@@ -110,14 +120,12 @@ export function createYard(canvas, opts = {}){
       if (keys.has("ArrowRight") || keys.has("d")) dx += 1;
       if (keys.has("ArrowUp") || keys.has("w")) dy -= 1;
       if (keys.has("ArrowDown") || keys.has("s")) dy += 1;
+      if (dx || dy){ const l = Math.hypot(dx, dy); dx /= l; dy /= l; }
+      else { dx = S.joy.x; dy = S.joy.y; }    // 키보드를 안 쓰면 조이스틱(길이만큼 속도)
       const before = { ...S.me };
       if (dx || dy){
         S.target = null;
-        const l = Math.hypot(dx, dy);
-        S.me = { ...clampYard({ x: S.me.x + dx/l*SPEED*dt, y: S.me.y + dy/l*SPEED*dt }), moving: true };
-      } else if (S.joy){
-        S.target = null;
-        S.me = { ...clampYard({ x: S.me.x + S.joy.x*SPEED*dt, y: S.me.y + S.joy.y*SPEED*dt }), moving: true };
+        S.me = { ...clampYard({ x: S.me.x + dx*SPEED*dt, y: S.me.y + dy*SPEED*dt }), moving: true };
       } else if (S.target){
         const vx = S.target.x - S.me.x, vy = S.target.y - S.me.y, d = Math.hypot(vx, vy);
         if (d < 4){ S.target = null; S.me.moving = false; }
@@ -166,12 +174,12 @@ export function createYard(canvas, opts = {}){
     // 다른 학생 → 조금 흐리게, 작게. 아래쪽에 있는 사람을 나중에 그려 겹침이 자연스럽게.
     const now = performance.now();
     const list = [];
-    for (const [id, o] of S.showOthers ? S.others : []){
+    for (const [id, o] of (S.hideOthers ? [] : S.others)){
       const m = S.meta.get(id); if (!m) continue;
       const p = lerpPos(o, now);
-      list.push({ y: p.y, fn: () => drawPlayer(ctx, { ...p, moving: o.moving }, { mine: false, t: S.t, name: m.name, colorCss: colorCss(m.color) }) });
+      list.push({ y: p.y, fn: () => drawPlayer(ctx, { ...p, moving: o.moving }, { mine: false, t: S.t, name: m.name, color: m.color }) });
     }
-    if (!spectator) list.push({ y: S.me.y + 1000, fn: () => drawPlayer(ctx, S.me, { mine: true, t: S.t, name: S.myName, colorCss: colorCss(S.myColor) }) });
+    if (!spectator) list.push({ y: S.me.y + 1000, fn: () => drawPlayer(ctx, S.me, { mine: true, t: S.t, name: S.myName, color: S.myColor }) });
     list.sort((a,b) => a.y - b.y).forEach(x => x.fn());
   }
 
@@ -183,7 +191,7 @@ export function createYard(canvas, opts = {}){
       if (!spectator){ window.addEventListener("keydown", onKeyDown); window.addEventListener("keyup", onKeyUp); window.addEventListener("blur", () => keys.clear()); }
       S.raf = requestAnimationFrame(step);
     },
-    stop(){ cancelAnimationFrame(S.raf); S.raf = 0; keys.clear(); joyReset(); },
+    stop(){ cancelAnimationFrame(S.raf); S.raf = 0; keys.clear(); },
     bindJoystick,
     applyPositions,
     on(name, fn){ handlers[name] = fn; },
@@ -193,14 +201,15 @@ export function createYard(canvas, opts = {}){
       S.zones = zones || []; S.type = type || "ox";
       S.answered = false; S.answer = undefined; S.picked = undefined; S.counts = null;
       S.hintOpen = false; S.frozen = spectator; S.target = null; S.lastZoneKey = undefined;
+      S.hideOthers = !spectator;
+      S.releaseJoy?.();
       S.me = { ...START, moving: false };
-      keys.clear(); joyReset();
+      keys.clear();
     },
-    setReveal({ answer, picked }){ S.answered = true; S.answer = answer; S.picked = picked; S.frozen = true; S.target = null; keys.clear(); joyReset(); },
+    setReveal({ answer, picked }){ S.answered = true; S.answer = answer; S.picked = picked; S.frozen = true; S.target = null; S.hideOthers = false; keys.clear(); S.releaseJoy?.(); },
     setCounts(counts){ S.counts = counts; },
-    setShowOthers(v){ S.showOthers = !!v; },
     setHintOpen(v){ S.hintOpen = v; },
-    freeze(v){ S.frozen = !!v; if (v){ keys.clear(); joyReset(); } },
+    freeze(v){ S.frozen = !!v; if (v){ keys.clear(); S.releaseJoy?.(); } },
     clearZones(){ S.zones = []; S.counts = null; S.answered = false; },
     me(){ return { ...S.me }; },
     zoneHere(){ return zoneAt(S.me, S.zones); }

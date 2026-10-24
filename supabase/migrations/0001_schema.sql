@@ -21,19 +21,26 @@ create table if not exists levels (
 create table if not exists questions (
   level    text not null references levels(key) on delete cascade,
   idx      int  not null,                                   -- 단계 안에서의 번호(0부터)
-  type     text not null check (type in ('ox','mc')),
+  type     text not null,                                   -- ox: O/X · mc: 객관식 · sa: 주관식
   q        text not null,
   choices  jsonb,                                           -- 객관식일 때 보기 4개
-  answer   text not null,                                   -- ox: 'O'/'X' · mc: '0'~'3'
+  answer   text not null,                                   -- ox: 'O'/'X' · mc: '0'~'3' · sa: 정답 낱말
   hint     text not null,
   explain  text not null,
   primary key (level, idx),
   constraint mc_has_four_choices check (
     type <> 'mc' or (jsonb_typeof(choices) = 'array' and jsonb_array_length(choices) = 4)
-  ),
-  constraint answer_shape check (
-    (type = 'ox' and answer in ('O','X')) or (type = 'mc' and answer in ('0','1','2','3'))
   )
+);
+-- 주관식: 정답 말고도 맞다고 쳐 줄 다른 이름들(예: 광개토대왕 → 광개토왕)
+alter table questions add column if not exists accept jsonb;
+-- 문제 종류와 정답 모양. 이미 만들어 둔 표에도 주관식(sa)이 들어가도록 다시 건다.
+alter table questions drop constraint if exists questions_type_check;
+alter table questions add constraint questions_type_check check (type in ('ox','mc','sa'));
+alter table questions drop constraint if exists answer_shape;
+alter table questions add constraint answer_shape check (
+  (type = 'ox' and answer in ('O','X')) or (type = 'mc' and answer in ('0','1','2','3'))
+  or (type = 'sa' and btrim(answer) <> '')
 );
 
 /* ---------------- 방 ---------------- */
@@ -52,6 +59,9 @@ create table if not exists rooms (
   last_seen   timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+-- 강제 종료하면 새 방을 연다. 새 방은 어느 방에서 이어졌는지 기억한다(이전 학생을 다시 초대하려고).
+-- 옛 방이 정리되면 고리도 끊긴다(같은 번호가 다른 방에 다시 쓰여도 엉뚱한 학생을 부르지 않게).
+alter table rooms add column if not exists prev_code text references rooms(code) on delete set null;
 
 -- 손님이 읽으면 안 되는 부분(정답이 들어 있는 이번 판 문제 목록, 진행자 열쇠)
 create table if not exists room_secrets (
@@ -84,6 +94,11 @@ create table if not exists players (
   last_seen  timestamptz not null default now(),
   unique (room_code, name)
 );
+-- 진행자가 새 방으로 다시 부른 학생: invited_to = 새 방 코드, moved = 초대를 받아 옮겨 갔음
+alter table players add column if not exists invited_to text references rooms(code) on delete set null;
+alter table players add column if not exists moved boolean not null default false;
+-- 주관식 문제에 학생이 써 둔 답(이번 문제 것만. 다음 문제로 넘어가면 비운다)
+alter table players add column if not exists typed text;
 create index if not exists players_room_idx on players(room_code);
 
 -- 학생 열쇠(이 기기가 그 학생이라는 증표). 손님이 읽으면 남의 캐릭터를 움직일 수 있으므로 떼어 둔다.
@@ -98,7 +113,7 @@ create table if not exists answers (
   room_code text not null references rooms(code) on delete cascade,
   q_index   int  not null,
   player_id uuid not null references players(id) on delete cascade,
-  picked    text,                                 -- null = 어느 자리에도 서 있지 않았음
+  picked    text,                                 -- null = 어느 자리에도 서 있지 않았음(주관식은 써 낸 답)
   correct   boolean not null,
   bonus     numeric not null default 0,
   primary key (room_code, q_index, player_id)

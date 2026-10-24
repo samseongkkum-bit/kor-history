@@ -109,7 +109,7 @@ begin
 
     -- 두 번 불러도 점수가 더 오르지 않는다
     perform grade_question(v_code);
-    assert (select score from players where id = ia) = i + 1, '가는 ' || (i+1) || '점이어야 한다';
+    assert (select score from players where id = ia) = (i + 1) * 10, '가는 ' || ((i+1) * 10) || '점이어야 한다';
 
     -- 이제는 정답과 해설이 나간다
     v_q := get_snapshot(v_code, null) -> 'question';
@@ -125,11 +125,11 @@ begin
 
   v_rank := v_snap -> 'ranking';
   assert jsonb_array_length(v_rank) = 3, '3명의 순위가 나온다';
-  assert v_rank -> 0 ->> 'name' = '가'   and (v_rank -> 0 ->> 'score')::int = 10 and v_rank -> 0 ->> 'title' = '왕',   '1등 가 10점 왕';
-  assert v_rank -> 1 ->> 'name' = '다'   and (v_rank -> 1 ->> 'score')::int = 5  and v_rank -> 1 ->> 'title' = '평민', '2등 다 5점 평민';
+  assert v_rank -> 0 ->> 'name' = '가'   and (v_rank -> 0 ->> 'score')::int = 100 and v_rank -> 0 ->> 'title' = '왕',  '1등 가 100점 왕';
+  assert v_rank -> 1 ->> 'name' = '다'   and (v_rank -> 1 ->> 'score')::int = 50  and v_rank -> 1 ->> 'title' = '평민', '2등 다 50점 평민';
   assert v_rank -> 2 ->> 'name' = '나'   and (v_rank -> 2 ->> 'score')::int = 0  and v_rank -> 2 ->> 'title' = '천민', '3등 나 0점 천민';
-  -- 12초 중 2초에 결정했으므로 한 문제당 약 0.83, 10문제면 8점대
-  assert (v_rank -> 0 ->> 'bonus')::numeric between 8 and 8.5,
+  -- 22초 중 2초에 결정했으므로 한 문제당 약 0.91, 10문제면 9점대
+  assert (v_rank -> 0 ->> 'bonus')::numeric between 9 and 9.2,
          '결정을 누른 가의 빠르기 보너스: ' || (v_rank -> 0 ->> 'bonus');
   assert (v_rank -> 1 ->> 'bonus')::numeric = 0, '결정을 안 누르면 보너스가 없다';
 

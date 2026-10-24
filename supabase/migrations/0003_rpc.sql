@@ -53,9 +53,10 @@ $$;
 
 /* ================= 진행자 ================= */
 
-create or replace function host_create_room()
+-- 방을 하나 연다(안에서만 쓴다). p_prev 를 주면 그 방에서 이어진 새 방이 된다.
+create or replace function hq_create_room(p_prev text)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_code text; v_token uuid; i int;
+declare v_code text; v_token uuid; v_level text; i int;
 begin
   perform hq_sweep();
   for i in 1..500 loop
@@ -65,9 +66,17 @@ begin
   end loop;
   if v_code is null then raise exception '방을 더 만들 수 없어요.'; end if;
 
-  insert into rooms(code) values (v_code);
+  -- 이어진 방은 단계도 그대로 이어받는다
+  select level into v_level from rooms where code = p_prev;
+  insert into rooms(code, prev_code, level) values (v_code, p_prev, coalesce(v_level, 'elem'));
   insert into room_secrets(code) values (v_code) returning host_token into v_token;
   return jsonb_build_object('code', v_code, 'hostToken', v_token, 'snapshot', get_snapshot(v_code, null));
+end $$;
+
+create or replace function host_create_room()
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  return hq_create_room(null);
 end $$;
 
 create or replace function hq_check_host(p_code text, p_token uuid) returns void
@@ -118,7 +127,7 @@ begin
 
   -- 새 문제는 모두 출발선에서 다시 시작한다. 지난 문제 중간에 들어온 학생도 이제 함께 푼다.
   update players set
-    pending = false, hint_used = false,
+    pending = false, hint_used = false, typed = null,
     locked_x = null, locked_y = null, locked_at = null,
     pos_x = 480, pos_y = 540, pos_at = now(), moving = false
   where room_code = p_code;
@@ -183,6 +192,48 @@ begin
   return get_snapshot(p_code, null);
 end $$;
 
+-- 강제 종료: 게임을 끝내고(최종 순위는 옛 방에 남는다) 새 방을 연다.
+-- 두 번 눌러도 새 방은 하나만 생긴다(이미 이어진 방이 있으면 그 방을 돌려준다).
+create or replace function host_new_room(p_code text, p_token uuid)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_next jsonb; v_code text; v_token uuid; v_finished jsonb;
+begin
+  perform hq_check_host(p_code, p_token);
+  perform 1 from rooms where code = p_code for update;
+  if (select phase from rooms where code = p_code) in ('question','reveal') then
+    perform hq_finish(p_code);
+  end if;
+  perform hq_touch(p_code);
+  v_finished := get_snapshot(p_code, null);
+
+  select r.code, rs.host_token into v_code, v_token
+    from rooms r join room_secrets rs on rs.code = r.code
+   where r.prev_code = p_code and r.phase = 'lobby'
+   order by r.created_at desc limit 1;
+  if v_code is not null then
+    perform hq_touch(v_code);
+    v_next := jsonb_build_object('code', v_code, 'hostToken', v_token, 'snapshot', get_snapshot(v_code, null));
+  else
+    v_next := hq_create_room(p_code);
+  end if;
+  return v_next || jsonb_build_object('finished', v_finished);
+end $$;
+
+-- 이전 방 학생을 새 방으로 다시 부른다. p_player 가 없으면 아직 안 온 학생 모두.
+create or replace function host_invite(p_code text, p_token uuid, p_player uuid default null)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_prev text;
+begin
+  perform hq_check_host(p_code, p_token);
+  select prev_code into v_prev from rooms where code = p_code;
+  if v_prev is null then raise exception '다시 부를 이전 방이 없어요. 이전 방이 정리됐을 수 있어요.'; end if;
+  update players set invited_to = p_code
+   where room_code = v_prev and not moved and (p_player is null or id = p_player);
+  perform hq_touch(v_prev);                     -- 이전 방 학생 화면이 초대를 바로 알아채게
+  perform hq_touch(p_code);
+  return get_snapshot(p_code, null);
+end $$;
+
 create or replace function host_kick(p_code text, p_token uuid, p_player uuid)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 begin
@@ -233,8 +284,14 @@ begin
     v_y  := coalesce(p.locked_y, p.pos_y);
     v_at := coalesce(p.locked_at, v_room.ends_at);
 
-    v_picked  := hq_zone_at(v_type, v_x, v_y);
-    v_correct := v_picked is not null and v_picked = v_answer;
+    if v_type = 'sa' then
+      -- 주관식: 마감 때까지 써 둔 답("답 내기"를 눌렀으면 그때 낸 답)
+      v_picked  := nullif(btrim(p.typed), '');
+      v_correct := v_picked is not null and hq_sa_correct(v_picked, v_answer, v_q -> 'accept');
+    else
+      v_picked  := hq_zone_at(v_type, v_x, v_y);
+      v_correct := v_picked is not null and v_picked = v_answer;
+    end if;
     -- 빠르기 보너스: 점수에는 더하지 않고 순위 동점 처리에만 쓴다
     v_bonus := case when v_correct
       then greatest(0, least(1, extract(epoch from (v_room.ends_at - v_at)) * 1000 / v_total_ms))
@@ -245,7 +302,7 @@ begin
     on conflict (room_code, q_index, player_id) do nothing;
 
     if v_correct then
-      update players set score = score + 1, bonus = bonus + v_bonus where id = p.id;
+      update players set score = score + hq_points(), bonus = bonus + v_bonus where id = p.id;
     end if;
   end loop;
 
@@ -261,7 +318,7 @@ create or replace function play_join(p_code text, p_name text, p_color text, p_t
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_room rooms%rowtype;
-  v_id uuid; v_new_token uuid; v_base text; v_name text; v_n int; v_count int;
+  v_id uuid; v_new_token uuid; v_base text; v_name text; v_n int; v_count int; v_color text;
 begin
   select * into v_room from rooms where code = p_code for update;
   if not found then raise exception '그런 입장 코드가 없어요. 진행자 화면의 숫자를 다시 확인해 주세요.'; end if;
@@ -272,9 +329,7 @@ begin
       join players pl on pl.id = ps.player_id
      where ps.token = p_token and pl.room_code = p_code;
     if v_id is not null then
-      update players set connected = true, last_seen = now(),
-             color = coalesce(nullif(p_color, ''), color)
-       where id = v_id;
+      update players set connected = true, last_seen = now() where id = v_id;
       perform hq_touch(p_code);
       return jsonb_build_object('playerId', v_id, 'playerToken', p_token, 'rejoined', true,
                                 'snapshot', get_snapshot(p_code, p_token));
@@ -295,14 +350,41 @@ begin
     if v_n > 99 then v_name := v_base || floor(random() * 1000)::int::text; exit; end if;
   end loop;
 
+  -- 저고리 색은 학생이 고르지 않는다. 이 방에서 아직 아무도 안 입은 색 중 하나를 무작위로 준다.
+  -- (p_color 는 새 방으로 옮겨 갈 때 입던 색을 이어 입으려는 것. 그 색이 비어 있을 때만 쓴다.)
+  -- 방 줄을 for update 로 잡고 있으므로 동시에 들어와도 색이 겹치지 않는다.
+  if p_color = any(hq_colors())
+     and not exists (select 1 from players where room_code = p_code and color = p_color) then
+    v_color := p_color;
+  else
+    select c into v_color from unnest(hq_colors()) c
+     where not exists (select 1 from players where room_code = p_code and color = c)
+     order by random() limit 1;
+  end if;
+
   insert into players(room_code, name, color, pending)
-  values (p_code, v_name, coalesce(nullif(p_color, ''), 'red'), v_room.phase = 'question')
+  values (p_code, v_name, coalesce(v_color, 'red'), v_room.phase = 'question')
   returning id into v_id;
   insert into player_secrets(player_id) values (v_id) returning token into v_new_token;
 
   perform hq_touch(p_code);
   return jsonb_build_object('playerId', v_id, 'playerToken', v_new_token, 'rejoined', false,
                             'snapshot', get_snapshot(p_code, v_new_token));
+end $$;
+
+-- 초대받은 학생이 새 방으로 옮겨 간다. 이름과 색은 그대로(색이 이미 쓰였으면 새 색), 점수는 새로 시작한다.
+create or replace function play_accept_invite(p_token uuid)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare p players%rowtype; v_res jsonb;
+begin
+  select pl.* into p from players pl join player_secrets ps on ps.player_id = pl.id where ps.token = p_token;
+  if not found or p.invited_to is null then raise exception '받은 초대가 없어요.'; end if;
+  if p.moved then raise exception '이미 새 방으로 옮겨 갔어요.'; end if;
+
+  v_res := play_join(p.invited_to, p.name, p.color, null);
+  update players set moved = true, connected = false where id = p.id;
+  perform hq_touch(p.room_code);
+  return v_res || jsonb_build_object('code', p.invited_to);
 end $$;
 
 -- 위치. 마당 밖으로 못 나가게 막고, 걷는 속도(260px/초)보다 빠른 이동은 그 속도까지만 인정한다.
@@ -346,11 +428,37 @@ begin
   end if;
 
   select rs.round -> v_room.q_index ->> 'type' into v_type from room_secrets rs where rs.code = p.room_code;
+  if v_type = 'sa' then return jsonb_build_object('ok', false, 'reason', 'type'); end if;   -- 주관식은 play_answer
   v_zone := hq_zone_at(v_type, p.pos_x, p.pos_y);
   if v_zone is null then return jsonb_build_object('ok', false, 'reason', 'zone'); end if;
 
   update players set locked_x = pos_x, locked_y = pos_y, locked_at = now() where id = p.id;
   return jsonb_build_object('ok', true, 'zone', v_zone);
+end $$;
+
+-- 주관식 답을 써 둔다. p_lock 이면 "답 내기" — 그 순간의 시각을 고정하고(빠르기 보너스의 근거) 더는 못 고친다.
+-- 답 내기를 누르지 않아도 마감 때 써 둔 답으로 채점한다.
+create or replace function play_answer(p_token uuid, p_text text, p_lock boolean default false)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare p players%rowtype; v_room rooms%rowtype; v_type text; v_text text;
+begin
+  select pl.* into p from players pl join player_secrets ps on ps.player_id = pl.id where ps.token = p_token;
+  if not found then return jsonb_build_object('ok', false, 'reason', 'player'); end if;
+
+  select * into v_room from rooms where code = p.room_code;
+  if v_room.phase <> 'question' or now() > v_room.ends_at or p.pending or p.locked_at is not null then
+    return jsonb_build_object('ok', false, 'reason', 'phase');
+  end if;
+  select rs.round -> v_room.q_index ->> 'type' into v_type from room_secrets rs where rs.code = p.room_code;
+  if v_type is distinct from 'sa' then return jsonb_build_object('ok', false, 'reason', 'type'); end if;
+
+  v_text := nullif(left(btrim(regexp_replace(coalesce(p_text, ''), '\s+', ' ', 'g')), 30), '');
+  if p_lock and v_text is null then return jsonb_build_object('ok', false, 'reason', 'empty'); end if;
+
+  update players set typed = v_text, last_seen = now(),
+         locked_at = case when p_lock then now() end
+   where id = p.id;
+  return jsonb_build_object('ok', true, 'locked', p_lock);
 end $$;
 
 -- 힌트는 물어본 학생에게만 돌려준다.
@@ -388,7 +496,7 @@ create or replace function get_snapshot(p_code text, p_player_token uuid default
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_room rooms%rowtype; v_round jsonb; v_reveal boolean;
-  v_players jsonb; v_you jsonb; v_pid uuid; v_lvl levels%rowtype;
+  v_players jsonb; v_you jsonb; v_pid uuid; v_lvl levels%rowtype; v_prev jsonb;
 begin
   select * into v_room from rooms where code = p_code;
   if not found then return null; end if;
@@ -410,12 +518,23 @@ begin
       select jsonb_build_object(
         'id', pl.id, 'name', pl.name, 'color', pl.color, 'score', pl.score,
         'pending', pl.pending, 'hintUsed', pl.hint_used, 'locked', pl.locked_at is not null,
-        'answered', a.player_id is not null, 'correct', a.correct, 'picked', a.picked
+        'answered', a.player_id is not null, 'correct', a.correct, 'picked', a.picked,
+        'typed', pl.typed,
+        'invite', case when not pl.moved then pl.invited_to end
       ) into v_you
       from players pl
       left join answers a on a.player_id = pl.id and a.room_code = p_code and a.q_index = v_room.q_index
       where pl.id = v_pid;
     end if;
+  end if;
+
+  -- 진행자에게만: 이전 방 학생 명단(다시 초대하려고)
+  if p_player_token is null and v_room.prev_code is not null then
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'id', p.id, 'name', p.name, 'color', p.color,
+             'invited', p.invited_to = v_room.code, 'moved', p.moved
+           ) order by p.joined_at), '[]'::jsonb)
+      into v_prev from players p where p.room_code = v_room.prev_code;
   end if;
 
   return jsonb_strip_nulls(jsonb_build_object(
@@ -437,7 +556,9 @@ begin
     'questions', case when v_room.phase = 'final' then v_room.q_index + 1 else null end,
     'last', v_room.q_index >= v_room.q_total - 1,
     'todayTotal', get_today_total(),
-    'you', v_you
+    'you', v_you,
+    'prevCode', v_room.prev_code,
+    'prev', v_prev
   ));
 end $$;
 
@@ -465,14 +586,19 @@ begin
     return;
   end if;
   roles := 'anon, authenticated';
+  -- Supabase 는 PUBLIC 과 별도로 anon·authenticated 에게 직접 실행 권한을 준다. 그것도 회수한다.
+  execute format('revoke execute on all functions in schema public from %s', roles);
+  execute format('alter default privileges in schema public revoke execute on functions from %s', roles);
   -- 안에서만 쓰는 함수(hq_*)는 열지 않는다.
   foreach fn in array array[
     'host_create_room()', 'host_resume(text,uuid)', 'host_set_level(text,uuid,text)',
     'host_start(text,uuid)', 'host_next(text,uuid)', 'host_end(text,uuid)',
     'host_kick(text,uuid,uuid)', 'host_close(text,uuid)',
+    'host_new_room(text,uuid)', 'host_invite(text,uuid,uuid)', 'play_accept_invite(uuid)',
     'grade_question(text)',
     'play_join(text,text,text,uuid)', 'play_move(uuid,double precision,double precision)',
-    'play_lock(uuid,double precision,double precision)', 'play_hint(uuid)', 'play_leave(uuid)',
+    'play_lock(uuid,double precision,double precision)', 'play_answer(uuid,text,boolean)',
+    'play_hint(uuid)', 'play_leave(uuid)',
     'get_snapshot(text,uuid)', 'get_levels()', 'get_today_total()'
   ] loop
     execute format('grant execute on function %s to %s', fn, roles);

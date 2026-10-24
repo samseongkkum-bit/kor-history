@@ -38,7 +38,7 @@ if (!levelsRes.ok) {
 }
 const levels = await levelsRes.json();
 say(Array.isArray(levels) && levels.length >= 2, `단계 ${levels.length}개: ${levels.map(l => `${l.name}(${l.total}문제)`).join(", ")}`);
-for (const l of levels) say(l.total === 30, `${l.name} 문제 30개`);
+for (const l of levels) say(l.total >= 30, `${l.name} 문제 ${l.total}개(30개 이상)`);
 
 // 2) 손님이 읽으면 안 되는 표
 for (const t of ["questions", "room_secrets", "player_secrets", "answers", "participation"]) {

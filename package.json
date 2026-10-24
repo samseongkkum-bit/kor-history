@@ -14,7 +14,7 @@
     "vendor": "node scripts/copy-vendor.mjs",
     "postinstall": "node scripts/copy-vendor.mjs",
     "build": "node scripts/make-config.mjs",
-    "seed": "node scripts/make-seed.mjs && node scripts/build-sql.mjs",
+    "seed": "node scripts/make-seed.mjs && node scripts/sync-solo.mjs && node scripts/build-sql.mjs",
     "db:push": "./scripts/db-push.sh",
     "db:check": "node scripts/db-check.mjs",
     "test:sql": "./scripts/sql-test.sh",

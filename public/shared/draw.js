@@ -1,9 +1,11 @@
 // 캔버스 그리기. 단일 파일의 drawPerson / drawYard / drawZones 코드를 그대로 가져왔다.
 // 바뀐 점: 여러 사람을 그릴 수 있게 인자를 조금 정리하고, 이름표와 흐리게 그리기를 더했다.
 import { W, H, SCROLL, inZone } from "./map.js";
-import { NUMS } from "./consts.js";
+import { NUMS, colorInfo } from "./consts.js";
 
 export const cv = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+// 저고리 색 id → 캔버스에 칠할 색(앞의 세 색은 테마 변수, 나머지는 고정 색)
+export const jacket = id => { const c = colorInfo(id); return c.hex || cv(c.css); };
 
 // 마당은 960px 기준으로 그린 뒤 화면 너비에 맞춰 줄어든다. 폰에서는 많이 줄어들어
 // 이름표 같은 작은 글자가 안 보이므로, 화면에서의 크기가 비슷해지도록 글자만 키운다.
@@ -138,11 +140,11 @@ export function drawNameTag(ctx, x, y, text, {small} = {}){
 }
 
 // 학생 한 명(나 또는 남). mine=false면 조금 흐리게.
-export function drawPlayer(ctx, p, {mine, t, name, colorCss}){
+export function drawPlayer(ctx, p, {mine, t, name, color}){
   ctx.save();
   if(!mine) ctx.globalAlpha = .55;
   drawPerson(ctx, p.x, p.y, {
-    upper: cv(colorCss), lower: cv("--meok-muted"), ribbon: cv("--red"),
+    upper: jacket(color), lower: cv("--meok-muted"), ribbon: cv("--red"),
     t, moving: p.moving, scale: mine ? 1 : .86
   });
   drawNameTag(ctx, p.x, p.y, name, {small: !mine});
