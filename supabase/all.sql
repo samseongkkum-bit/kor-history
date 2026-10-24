@@ -260,7 +260,7 @@ language sql immutable as $$
   select case
     when p_score >= 100 then '왕'
     when p_score >= 90  then '조선의 학자'
-    when p_score >= 70  then '귀족'
+    when p_score >= 70  then '양반'
     when p_score >= 50  then '평민'
     when p_score >= 30  then '양민'
     else '천민'
