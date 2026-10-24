@@ -37,7 +37,7 @@ body{font-size:18px; line-height:28px}
   .controls{gap:var(--s2)}
   .actions{gap:var(--s2)}
   .actions .btn{flex:1 1 44%; padding-inline:var(--s4)}
-  .joy{width:148px; height:148px; justify-self:center; margin-top:var(--s2)}
+  .joy{justify-self:center; margin-top:var(--s2)}
   .score{font-size:64px}
   .rank .title{font-size:38px; line-height:46px}
   input[type=text]{width:100%}
