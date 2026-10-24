@@ -265,7 +265,7 @@ end $$;
 
 /* ---------- 칭호 ---------- */
 do $$
-declare want text[] := array['천민','천민','천민','양민','양민','평민','평민','양반','양반','조선의 학자','왕']; i int;
+declare want text[] := array['천민','천민','천민','양민','양민','평민','평민','양반','양반','학자','왕']; i int;
 begin
   for i in 0..10 loop
     assert hq_title(i * 10) = want[i + 1], (i * 10) || '점은 ' || want[i + 1];
