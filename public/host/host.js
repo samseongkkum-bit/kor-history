@@ -17,7 +17,9 @@ let room = { code: LS.get("code"), hostToken: LS.get("token") };
 let yard = null, watch = null, relay = null, timerRaf = 0;
 let shownQ = -2, shownPhase = "", lastPlayers = "", lastPrev = "", curZones = [];
 let reviewKey = "";           // 최종 결과의 '문제별 학생 답'을 이미 받아 왔는지(같은 판이면 다시 받지 않는다)
-let nextSnap = null;          // 강제 종료로 만들어 둔 새 방(최종 순위를 보여 주는 동안 기다린다)
+let nextSnap = null;
+let lastSnap = null;          // 마지막으로 받은 상황(대기실 인원을 0.5초마다 다시 셀 때 쓴다)
+const firstSeen = new Map();  // 학생 id -> 이 화면이 처음 본 시각          // 강제 종료로 만들어 둔 새 방(최종 순위를 보여 주는 동안 기다린다)
 
 const show = which => ["s-start","s-game","s-final","s-msg"].forEach(id => $(id).hidden = id !== which);
 const message = (t, b) => { $("msgTitle").textContent = t; $("msgBody").textContent = b; show("s-msg"); };
@@ -82,7 +84,10 @@ function startWatching(){
     },
     onError: e => console.warn(e.message)
   });
-  relay = positionRelay(watch.channel, { isHost: true, onAll: p => { yard?.applyPositions(p); countZones(p); } });
+  relay = positionRelay(watch.channel, { isHost: true, onAll: p => {
+    yard?.applyPositions(p); countZones(p);
+    if (lastSnap?.phase === "lobby") renderRoster(lastSnap);   // 0.5초마다 대기실 인원을 다시 센다
+  } });
 }
 
 // 구역별 인원은 화면에 그리는 바로 그 위치로 센다(따로 세면 숫자와 그림이 어긋난다).
@@ -175,23 +180,17 @@ function render(s){
   });
   $("startBtn").hidden = s.phase === "question" || s.phase === "reveal";
   $("startBtn").textContent = s.phase === "final" ? "새 문제로 한 판 더" : "게임 시작";
-  $("startBtn").disabled = (s.count ?? 0) === 0;
   $("nextBtn").hidden = s.phase !== "reveal";
   $("revealBtn").hidden = s.phase !== "question";
   $("endBtn").disabled = s.phase === "lobby";
   $("plabel").textContent = s.phase === "lobby" ? "들어온 학생" : "학생";
-  $("pcount").textContent = s.count ?? 0;
   $("pmax").textContent = `(최대 ${s.maxPlayers ?? 30}명)`;
   $("lobbycard").hidden = s.phase !== "lobby";
   $("levelcard").hidden = s.phase === "question" || s.phase === "reveal";
-  $("lobbyCount").textContent = `${s.count ?? 0}명`;
   $("codecard").classList.toggle("compact", s.phase !== "lobby" && !$("codecard").dataset.open);
 
-  // 대기실에서는 나간 학생(연결 끊김)을 명단과 마당에서 뺀다. 인원(s.count)도 서버가 들어와 있는 학생만 센다.
-  // 게임 중에는 점수가 있으니 그대로 두고 "연결 끊김"으로만 표시한다.
-  const shown = s.phase === "lobby" ? (s.players || []).filter(p => p.connected) : (s.players || []);
-  yard?.setMeta(shown);
-  renderPlayers(shown, s.phase);
+  lastSnap = s;
+  renderRoster(s);
   renderPrev(s);
 
   if (s.phase === "lobby"){
@@ -291,6 +290,32 @@ async function loadReview(s){
         <li class="${a.correct ? "ok" : "no"}" title="${a.correct ? "맞힘" : "틀림"}"><span class="who">${esc(a.name)}</span><span class="mine">${a.mine == null ? (q.type === "sa" ? "쓰지 않음" : "고르지 않음") : esc(a.mine)}</span></li>`).join("")
         || `<li class="muted">이 문제를 푼 학생이 없어요</li>`}</ul>
     </li>`).join("");
+}
+
+/* ---------------- 대기실 인원 ---------------- */
+// 학생 화면은 1초마다 위치를 보내 온다. 대기실에서는 이 소식이 5초 넘게 끊긴 학생을 나간 것으로 보고
+// 바로 인원·명단·마당에서 뺀다. (창을 닫으면 서버에 '나감'이 못 갈 때가 많아, 서버만 믿으면 1분 가까이 늦다.)
+// 위치 소식을 아직 믿을 수 없을 때(화면을 막 열었거나 실시간 연결이 끊겼을 때)는 서버가 센 것을 쓴다.
+// 게임 중에는 점수가 있으니 명단에 그대로 두고 "연결 끊김"으로만 표시한다.
+function presentPlayers(s){
+  const all = s.players || [];
+  if (s.phase !== "lobby") return all;
+  const now = Date.now();
+  for (const p of all) if (!firstSeen.has(p.id)) firstSeen.set(p.id, now);
+  if (!relay?.ready()) return all.filter(p => p.connected);
+  const heard = relay.heard(5000);
+  // 막 들어온 학생은 첫 위치 소식이 오기 전이라도 바로 보여 준다
+  return all.filter(p => heard.has(p.id) || (p.connected && now - firstSeen.get(p.id) < 8000));
+}
+
+function renderRoster(s){
+  const shown = presentPlayers(s);
+  const n = s.phase === "lobby" ? shown.length : (s.count ?? 0);
+  $("pcount").textContent = n;
+  $("lobbyCount").textContent = `${n}명`;
+  $("startBtn").disabled = n === 0;
+  yard?.setMeta(shown);
+  renderPlayers(shown, s.phase);
 }
 
 function renderPlayers(players, phase){
