@@ -139,6 +139,10 @@ canvas{display:block; width:100%; height:auto; cursor:pointer}
 .review li{display:flex; gap:var(--s4); align-items:baseline; padding:var(--s2) 0; border-bottom:1px solid var(--hairline)}
 .review .m{flex:none; width:28px; font-weight:700; font-family:var(--serif)}
 .review .m.ok{color:var(--correct)} .review .m.no{color:var(--wrong)}
+.review .qa{display:flex; flex-direction:column; gap:2px; min-width:0}
+.review .ans{font-size:15px; line-height:22px; color:var(--meok-muted)}
+.review .ans b{color:var(--correct)}
+.review .ans .mine{color:var(--wrong)}
 .result .actions{justify-content:center}
 
 button:focus-visible{outline:3px solid var(--hwang); outline-offset:3px}
@@ -804,7 +808,7 @@ function renderStart(){
 
 /* ---------------- 화면: 게임 ---------------- */
 function start(level){
-  S = {screen:"quiz", level, i:0, picked:undefined, hint:false, results:[], round:buildRound(level)};
+  S = {screen:"quiz", level, i:0, picked:undefined, hint:false, results:[], picks:[], round:buildRound(level)};
   renderQuiz();
 }
 
@@ -979,7 +983,7 @@ function decide(timeUp){
     const text = (document.getElementById("ans")?.value || "").trim().slice(0, 30);
     if(!text && !timeUp) return;
     S.picked = text || null;
-    S.results.push(saCorrect(q, text));
+    S.results.push(saCorrect(q, text)); S.picks.push(S.picked);
     const sec = document.getElementById("tsec"); if(sec && timeUp) sec.textContent = "끝!";
     renderBelow();
     return;
@@ -987,7 +991,7 @@ function decide(timeUp){
   const z = currentZone();
   if(!z && !timeUp) return;
   S.picked = z ? z.key : null;
-  S.results.push(S.picked === S.round[S.i].a);
+  S.results.push(S.picked === S.round[S.i].a); S.picks.push(S.picked);
   G.target = null; G.joy = null; keys.clear();
   const sec = document.getElementById("tsec"); if(sec && timeUp) sec.textContent = "끝!";
   renderBelow();
@@ -1000,6 +1004,13 @@ function next(){
 }
 
 /* ---------------- 화면: 결과 ---------------- */
+// 결과 화면에 보여 줄 답 글자. O/X 는 ○·×, 객관식은 번호와 보기, 주관식은 쓴 글자 그대로.
+function answerLabel(q, v){
+  if(q.t === "ox") return v === "O" ? "○ (맞아요)" : "× (아니에요)";
+  if(q.t === "sa") return String(v);
+  return `${NUMS[v]} ${q.c[v]}`;
+}
+
 function renderResult(){
   stopLoop();
   const L = QUIZ[S.level], Q = S.round;
@@ -1012,8 +1023,8 @@ function renderResult(){
     <div class="rank"><p class="muted">오늘의 칭호</p><div class="title">${r.title}</div><p>${r.say}</p></div>
     <div class="ladder" aria-label="칭호 단계">${RANKS.map(x=>`<span class="${x===r?"on":""}">${x.title} ${x.lo===x.hi?x.lo:`${x.lo}~${x.hi}`}점</span>`).join("")}</div>
     <div class="review">
-      <p class="cap muted">문제별 결과</p>
-      <ol>${Q.map((q,k)=>`<li><span class="m ${S.results[k]?"ok":"no"}">${S.results[k]?"○":"×"}</span><span>${k+1}. ${esc(q.q)}</span></li>`).join("")}</ol>
+      <p class="cap muted">문제별 결과와 정답</p>
+      <ol>${Q.map((q,k)=>`<li><span class="m ${S.results[k]?"ok":"no"}">${S.results[k]?"○":"×"}</span><span class="qa"><span>${k+1}. ${esc(q.q)}</span><span class="ans">정답 <b>${esc(answerLabel(q, q.a))}</b>${S.results[k] ? "" : ` · 내 답 <span class="mine">${S.picks[k] == null ? "고르지 않음" : esc(answerLabel(q, S.picks[k]))}</span>`}</span></span></li>`).join("")}</ol>
     </div>
     <div class="actions">
       <button class="btn btn-primary" type="button" id="again">새 문제로 다시 풀기</button>
