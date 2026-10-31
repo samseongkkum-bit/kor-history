@@ -45,6 +45,7 @@ export const api = {
   hostReveal:  (code, token)            => rpc("host_reveal_now", { p_code: code, p_token: token }),
   hostEnd:     (code, token)            => rpc("host_end",       { p_code: code, p_token: token }),
   hostKick:    (code, token, player)    => rpc("host_kick",      { p_code: code, p_token: token, p_player: player }),
+  hostReview:  (code, token)            => rpc("host_review",    { p_code: code, p_token: token }),
   hostNewRoom: (code, token)            => rpc("host_new_room",  { p_code: code, p_token: token }),
   hostInvite:  (code, token, player)    => rpc("host_invite",    { p_code: code, p_token: token, p_player: player || null }),
 
