@@ -130,6 +130,7 @@ export function watchRoom({ code, playerToken, isHost, onSnapshot, onError }){
 // 이렇게 하면 주고받는 메시지 수가 사람 수의 제곱이 아니라 사람 수에 비례한다.
 export function positionRelay(channel, { isHost, onAll }){
   const seen = new Map();          // id -> [x, y, moving, 마지막으로 들은 시각]
+  const startedAt = Date.now();
   let timer = 0;
 
   if (isHost){
@@ -155,6 +156,14 @@ export function positionRelay(channel, { isHost, onAll }){
     send(id, x, y, moving){
       channel.send({ type: "broadcast", event: "p", payload: { i: id, x: Math.round(x), y: Math.round(y), m: moving ? 1 : 0 } });
     },
+    // 진행자: 최근 ms 안에 소식(1초마다 오는 위치)을 들은 학생 id 들
+    heard(ms){
+      const now = Date.now(), ids = new Set();
+      for (const [id, v] of seen) if (now - v[3] <= ms) ids.add(id);
+      return ids;
+    },
+    // 진행자: 위치 소식을 믿고 써도 되는지(채널이 붙어 있고, 학생들 소식을 한 번씩은 들을 만큼 지났는지)
+    ready(){ return channel.state === "joined" && Date.now() - startedAt > 6000; },
     stop(){ clearInterval(timer); }
   };
 }
