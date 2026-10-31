@@ -234,8 +234,22 @@ async function openHint(){
   }
 }
 
+// 내보내졌을 때: 방 지켜보기·위치 보내기를 모두 멈추고, 지난 입장 표(token)도 지운다.
+// 표를 지워야 같은 폰으로 다시 들어올 때 새 학생으로 깨끗하게 들어간다.
+function kicked(){
+  watch?.stop(); relay?.stop(); watch = null; relay = null;
+  clearInterval(beacon); beacon = 0;
+  stopTimer();
+  me.token = ""; me.id = null; LS.del("token");
+  $("chip").textContent = "입장하기";
+  message("방에서 나왔어요", "진행자가 이 방에서 내보냈어요. 다시 들어가려면 아래 버튼을 눌러 방 번호를 넣어 주세요.", "다시 들어가기");
+}
+
 /* ---------------- 지금 상황 그리기 ---------------- */
 function render(s){
+  // 방은 있는데 내 자리가 없다 = 진행자가 나를 내보냈다.
+  // (입장한 뒤에만 지켜보기를 시작하므로, 정상이라면 s.you 는 늘 있다.)
+  if (!s.you) return kicked();
   total = s.total || total;
   if (s.you){ me.score = s.you.score; me.name = s.you.name || me.name; me.id = s.you.id || me.id; me.color = s.you.color || me.color; }
   yard?.setMe({ id: me.id, name: me.name, color: me.color });
