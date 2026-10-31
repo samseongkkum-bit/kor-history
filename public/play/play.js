@@ -19,7 +19,7 @@ const me = {
   id: null, score: 0
 };
 
-let yard = null, watch = null, relay = null, timerRaf = 0, beacon = 0;
+let yard = null, watch = null, relay = null, timerRaf = 0, beacon = 0, ping = 0;
 let shownQ = -2, shownPhase = "", answers = [], total = 10, curType = "ox", hintOpen = false;
 
 /* ---------------- 화면 바꾸기 ---------------- */
@@ -92,7 +92,13 @@ function startWatching(){
     const p = yard.me();
     relay?.send(me.id, p.x, p.y, false);
   }, 1000);
+
+  // 10초마다 서버에 "아직 들어와 있어요"를 적는다. 폰이 꺼지거나 인터넷이 끊겨 이 소식이 40초 넘게 없으면
+  // 진행자 화면 인원에서 저절로 빠진다(supabase/migrations/0007_presence.sql).
+  clearInterval(ping);
+  ping = setInterval(sendPing, 10000);
 }
+const sendPing = () => { if (me.token && watch) api.playPing(me.token).catch(() => {}); };
 
 /* ---------------- 마당 ---------------- */
 function ensureYard(){
@@ -239,6 +245,7 @@ async function openHint(){
 function kicked(){
   watch?.stop(); relay?.stop(); watch = null; relay = null;
   clearInterval(beacon); beacon = 0;
+  clearInterval(ping); ping = 0;
   stopTimer();
   me.token = ""; me.id = null; LS.del("token");
   $("chip").textContent = "입장하기";
@@ -468,4 +475,9 @@ if (configMissing()){
   if (me.token && me.code && me.name) doJoin();
 }
 
-window.addEventListener("pagehide", () => { if (me.token) api.playLeave(me.token).catch(() => {}); });
+// 화면을 닫거나 다른 앱으로 가면 바로 진행자 화면 인원에서 빠지고, 돌아오면 바로 다시 들어간다.
+const leave = () => { if (me.token && watch) api.playLeave(me.token).catch(() => {}); };
+const back  = () => { if (me.token && watch){ sendPing(); watch.refresh(); } };
+window.addEventListener("pagehide", leave);
+window.addEventListener("pageshow", e => { if (e.persisted) back(); });
+document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" ? leave() : back());

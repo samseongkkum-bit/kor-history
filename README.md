@@ -400,7 +400,8 @@ supabase/
   migrations/0002_geometry.sql 마당 좌표·출제·칭호
   migrations/0003_rpc.sql      화면이 부르는 함수들
   migrations/0004_seed_*.sql   문제 (questions.json 에서 자동 생성)
-  all.sql                      위 넷을 합친 것 (SQL Editor 붙여넣기용)
+  migrations/0005~0007_*.sql   출제 순환 / 정답 바로 확인 / 나간 학생 인원에서 빼기
+  all.sql                      위 파일들을 합친 것 (SQL Editor 붙여넣기용)
 public/
   shared/  consts.js map.js    상수·칭호 / 마당 좌표와 구역 판정
            draw.js yard.js     캔버스 그리기 / 마당 화면(관전·조작)
