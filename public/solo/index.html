@@ -142,7 +142,8 @@ canvas{display:block; width:100%; height:auto; cursor:pointer}
 .review .qa{display:flex; flex-direction:column; gap:2px; min-width:0}
 .review .ans{font-size:15px; line-height:22px; color:var(--meok-muted)}
 .review .ans b{color:var(--correct)}
-.review .ans .mine{color:var(--wrong)}
+.review .ans .mine{font-weight:700}
+.review .ans .mine.ok{color:var(--correct)} .review .ans .mine.no{color:var(--wrong)}
 .result .actions{justify-content:center}
 
 button:focus-visible{outline:3px solid var(--hwang); outline-offset:3px}
@@ -1063,8 +1064,8 @@ function renderResult(){
     <div class="rank"><p class="muted">오늘의 칭호</p><div class="title">${r.title}</div><p>${r.say}</p></div>
     <div class="ladder" aria-label="칭호 단계">${RANKS.map(x=>`<span class="${x===r?"on":""}">${x.title} ${x.lo===x.hi?x.lo:`${x.lo}~${x.hi}`}점</span>`).join("")}</div>
     <div class="review">
-      <p class="cap muted">문제별 결과와 정답</p>
-      <ol>${Q.map((q,k)=>`<li><span class="m ${S.results[k]?"ok":"no"}">${S.results[k]?"○":"×"}</span><span class="qa"><span>${k+1}. ${esc(q.q)}</span><span class="ans">정답 <b>${esc(answerLabel(q, q.a))}</b>${S.results[k] ? "" : ` · 내 답 <span class="mine">${S.picks[k] == null ? "고르지 않음" : esc(answerLabel(q, S.picks[k]))}</span>`}</span></span></li>`).join("")}</ol>
+      <p class="cap muted">문제별 결과 · 내 답과 정답</p>
+      <ol>${Q.map((q,k)=>`<li><span class="m ${S.results[k]?"ok":"no"}">${S.results[k]?"○":"×"}</span><span class="qa"><span>${k+1}. ${esc(q.q)}</span><span class="ans">내 답 <span class="mine ${S.results[k]?"ok":"no"}">${S.picks[k] == null ? (q.t==="sa" ? "쓰지 않음" : "고르지 않음") : esc(answerLabel(q, S.picks[k]))}</span> · 정답 <b>${esc(answerLabel(q, q.a))}</b></span></span></li>`).join("")}</ol>
     </div>
     <div class="actions">
       <button class="btn btn-primary" type="button" id="again">새 문제로 다시 풀기</button>
