@@ -100,5 +100,6 @@ begin
   assert has_function_privilege('anon', 'play_accept_invite(uuid)', 'execute');
   assert has_function_privilege('anon', 'play_ping(uuid)', 'execute');
   assert has_function_privilege('anon', 'play_leave(uuid)', 'execute');
+  assert has_function_privilege('anon', 'host_review(text,uuid)', 'execute');
   raise notice '내부 함수 권한 테스트 통과';
 end $$;

@@ -144,5 +144,60 @@ begin
   assert get_today_total() = v_today_before + 3, '오늘 참여 인원 합계에 3명이 더해진다';
 
   raise notice '한 판 진행 테스트 통과 (방 %)', v_code;
+
+  /* ---------- 진행자 화면: 문제별 학생 답 ---------- */
+  v := host_review(v_code, v_host);
+  assert jsonb_array_length(v) = 10, '채점한 10문제가 모두 나온다';
+  assert (v -> 0 ->> 'n')::int = 1 and v -> 0 ? 'q' and v -> 0 ? 'answerLabel', '번호·문제·정답이 있다';
+  assert jsonb_array_length(v -> 0 -> 'answers') = 3, '세 학생의 답이 있다';
+  assert v -> 0 -> 'answers' -> 0 ->> 'name' = '가' and v -> 0 -> 'answers' -> 2 ->> 'name' = '나', '순위 순서로 나온다';
+  assert (v -> 0 -> 'answers' -> 0 ->> 'correct')::boolean
+     and v -> 0 -> 'answers' -> 0 ->> 'mine' = v -> 0 ->> 'answerLabel', '가는 정답을 냈고 그 글자가 정답과 같다';
+  assert not (v -> 0 -> 'answers' -> 2 ->> 'correct')::boolean
+     and v -> 0 -> 'answers' -> 2 ->> 'mine' <> v -> 0 ->> 'answerLabel', '나는 다른 답을 냈다';
+  assert (v -> 9 -> 'answers' -> 1 ->> 'name') = '다' and not (v -> 9 -> 'answers' -> 1 ->> 'correct')::boolean, '다는 10번을 틀렸다';
+  begin
+    perform host_review(v_code, gen_random_uuid());
+    raise exception '진행자 열쇠 없이 학생 답을 보면 안 된다';
+  exception when sqlstate 'P0001' then
+    if sqlerrm like '진행자 열쇠 없이%' then raise; end if;
+  end;
+  raise notice '문제별 학생 답 테스트 통과';
   delete from rooms where code = v_code;
+end $$;
+
+/* ---------- 문제별 학생 답: 객관식·주관식, 아무것도 안 낸 학생, 채점 전 문제 ---------- */
+do $$
+declare v jsonb; v_code text; v_host uuid; ta uuid; tb uuid; v_q jsonb; c double precision[]; lv text;
+begin
+  foreach lv in array array['mid', 'high'] loop
+    v := host_create_room(); v_code := v ->> 'code'; v_host := (v ->> 'hostToken')::uuid;
+    v := play_join(v_code, '하나', 'red');  ta := (v ->> 'playerToken')::uuid;
+    v := play_join(v_code, '두리', 'red');  tb := (v ->> 'playerToken')::uuid;
+    perform host_set_level(v_code, v_host, lv);
+    perform host_start(v_code, v_host);
+    assert jsonb_array_length(host_review(v_code, v_host)) = 0, '채점 전 문제는 나오지 않는다(정답이 새지 않게)';
+
+    select rs.round -> 0 into v_q from room_secrets rs where rs.code = v_code;
+    if v_q ->> 'type' = 'sa' then
+      perform play_answer(ta, v_q ->> 'answer', true);           -- 하나: 정답을 씀, 두리: 아무것도 안 씀
+    else
+      c := t_center(v_q ->> 'type', v_q ->> 'answer');            -- 하나: 정답 자리, 두리: 시작 자리(아무 구역도 아님)
+      perform t_walk(ta, c[1], c[2]);
+    end if;
+    perform t_expire(v_code);
+    perform grade_question(v_code);
+    perform host_end(v_code, v_host);
+
+    v := host_review(v_code, v_host);
+    assert jsonb_array_length(v) = 1, lv || ': 채점한 1문제만 나온다';
+    assert v -> 0 -> 'answers' -> 0 ->> 'name' = '하나'
+       and v -> 0 -> 'answers' -> 0 ->> 'mine' = v -> 0 ->> 'answerLabel', lv || ': 정답 글자가 그대로 나온다';
+    assert v -> 0 -> 'answers' -> 1 ->> 'name' = '두리'
+       and v -> 0 -> 'answers' -> 1 ->> 'mine' is null
+       and not (v -> 0 -> 'answers' -> 1 ->> 'correct')::boolean,
+       lv || ': 아무것도 안 낸 학생은 답이 비어 있고 틀린 것으로 나온다';
+    delete from rooms where code = v_code;
+  end loop;
+  raise notice '문제별 학생 답(객관식·주관식) 테스트 통과';
 end $$;

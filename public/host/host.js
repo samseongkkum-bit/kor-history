@@ -16,6 +16,7 @@ const LS = {
 let room = { code: LS.get("code"), hostToken: LS.get("token") };
 let yard = null, watch = null, relay = null, timerRaf = 0;
 let shownQ = -2, shownPhase = "", lastPlayers = "", lastPrev = "", curZones = [];
+let reviewKey = "";           // 최종 결과의 '문제별 학생 답'을 이미 받아 왔는지(같은 판이면 다시 받지 않는다)
 let nextSnap = null;          // 강제 종료로 만들어 둔 새 방(최종 순위를 보여 주는 동안 기다린다)
 
 const show = which => ["s-start","s-game","s-final","s-msg"].forEach(id => $(id).hidden = id !== which);
@@ -269,6 +270,27 @@ function renderFinal(s){
   $("finalList").innerHTML = list.map(p =>
     `<li><span class="no">${p.place}</span><span class="nm">${esc(p.name)}</span><span class="ti">${esc(p.title)}</span><span class="sc">${p.score}점</span></li>`
   ).join("") || `<li class="muted">참여한 학생이 없어요</li>`;
+  loadReview(s);
+}
+
+// 최종 결과 아래에 문제마다 정답과 학생들이 낸 답을 보여 준다(/solo 결과 화면과 같은 '내 답 · 정답').
+async function loadReview(s){
+  const key = `${s.code}:${s.questions ?? 0}:${(s.ranking || []).length}`;
+  if (key === reviewKey) return;
+  reviewKey = key;
+  let list = [];
+  try { list = await api.hostReview(room.code, room.hostToken) || []; }
+  catch (e) { console.warn(e.message); reviewKey = ""; return; }
+  if (key !== reviewKey) return;                       // 그새 다른 판으로 넘어갔다
+  $("review").hidden = !list.length;
+  $("reviewList").innerHTML = list.map(q => `
+    <li>
+      <p class="rq"><b>${q.n}.</b> ${esc(q.q)}</p>
+      <p class="ra">정답 <b>${esc(q.answerLabel)}</b></p>
+      <ul class="rs">${(q.answers || []).map(a => `
+        <li class="${a.correct ? "ok" : "no"}" title="${a.correct ? "맞힘" : "틀림"}"><span class="who">${esc(a.name)}</span><span class="mine">${a.mine == null ? (q.type === "sa" ? "쓰지 않음" : "고르지 않음") : esc(a.mine)}</span></li>`).join("")
+        || `<li class="muted">이 문제를 푼 학생이 없어요</li>`}</ul>
+    </li>`).join("");
 }
 
 function renderPlayers(players, phase){
