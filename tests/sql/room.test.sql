@@ -263,6 +263,41 @@ begin
   raise notice '내보내기 테스트 통과';
 end $$;
 
+/* ---------- 나가면 인원에서 빠지기 ---------- */
+do $$
+declare v jsonb; v_code text; v_host uuid; t1 uuid; t2 uuid; id2 uuid; v_seen timestamptz;
+begin
+  v := host_create_room(); v_code := v->>'code'; v_host := (v->>'hostToken')::uuid;
+  v := play_join(v_code, '민수', 'red');   t1 := (v->>'playerToken')::uuid;
+  v := play_join(v_code, '지아', 'red');   t2 := (v->>'playerToken')::uuid; id2 := (v->>'playerId')::uuid;
+  assert (get_snapshot(v_code, null)->>'count')::int = 2, '둘 다 들어와 있다';
+
+  -- 화면을 닫으면 바로 빠지고, 진행자 화면이 알아채도록 방이 바뀐다
+  update rooms set updated_at = now() - interval '1 minute' where code = v_code;
+  select updated_at into v_seen from rooms where code = v_code;
+  perform play_leave(t1);
+  assert (get_snapshot(v_code, null)->>'count')::int = 1, '나간 학생은 인원에서 빠진다';
+  assert (select updated_at from rooms where code = v_code) > v_seen, '나가면 방을 건드린다';
+  assert exists (select 1 from jsonb_array_elements(get_snapshot(v_code, null)->'players') e
+                  where e->>'name' = '민수' and not (e->>'connected')::boolean), '나간 학생은 연결 끊김으로 보인다';
+
+  -- 같은 기기로 다시 오면 다시 센다
+  perform play_ping(t1);
+  assert (get_snapshot(v_code, null)->>'count')::int = 2, '돌아오면 다시 센다';
+
+  -- 폰이 꺼져 아무 소식이 없으면 40초 뒤 빠진다
+  update players set last_seen = now() - interval '41 seconds' where id = id2;
+  assert (get_snapshot(v_code, null)->>'count')::int = 1, '소식이 끊긴 학생은 빠진다';
+  perform play_ping(t2);
+  assert (get_snapshot(v_code, null)->>'count')::int = 2, '소식이 다시 오면 다시 센다';
+
+  -- 모르는 열쇠는 아무 일도 하지 않는다
+  perform play_ping(gen_random_uuid());
+  perform play_leave(gen_random_uuid());
+  delete from rooms where code = v_code;
+  raise notice '나가면 인원에서 빠지기 테스트 통과';
+end $$;
+
 /* ---------- 칭호 ---------- */
 do $$
 declare want text[] := array['천민','천민','천민','양민','양민','평민','평민','양반','양반','학자','왕']; i int;

@@ -98,5 +98,7 @@ begin
   ), '안에서만 쓰는 hq_* 함수는 anon 이 부를 수 없다';
   assert has_function_privilege('anon', 'host_new_room(text,uuid)', 'execute');
   assert has_function_privilege('anon', 'play_accept_invite(uuid)', 'execute');
+  assert has_function_privilege('anon', 'play_ping(uuid)', 'execute');
+  assert has_function_privilege('anon', 'play_leave(uuid)', 'execute');
   raise notice '내부 함수 권한 테스트 통과';
 end $$;

@@ -54,6 +54,7 @@ export const api = {
   playAnswer:  (token, text, lock)      => rpc("play_answer", { p_token: token, p_text: text, p_lock: !!lock }),
   playHint:    (token)                  => rpc("play_hint", { p_token: token }),
   playLeave:   (token)                  => rpc("play_leave", { p_token: token }),
+  playPing:    (token)                  => rpc("play_ping", { p_token: token }),
   playAccept:  (token)                  => rpc("play_accept_invite", { p_token: token })
 };
 

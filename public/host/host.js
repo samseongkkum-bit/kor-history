@@ -186,8 +186,11 @@ function render(s){
   $("lobbyCount").textContent = `${s.count ?? 0}명`;
   $("codecard").classList.toggle("compact", s.phase !== "lobby" && !$("codecard").dataset.open);
 
-  yard?.setMeta(s.players || []);
-  renderPlayers(s.players || [], s.phase);
+  // 대기실에서는 나간 학생(연결 끊김)을 명단과 마당에서 뺀다. 인원(s.count)도 서버가 들어와 있는 학생만 센다.
+  // 게임 중에는 점수가 있으니 그대로 두고 "연결 끊김"으로만 표시한다.
+  const shown = s.phase === "lobby" ? (s.players || []).filter(p => p.connected) : (s.players || []);
+  yard?.setMeta(shown);
+  renderPlayers(shown, s.phase);
   renderPrev(s);
 
   if (s.phase === "lobby"){
